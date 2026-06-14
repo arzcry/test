@@ -5,24 +5,30 @@ local player = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
 local T = {
-    bg =      Color3.fromRGB(13, 13, 15),
-    surface = Color3.fromRGB(20, 20, 24),
-    panel =   Color3.fromRGB(27, 27, 33),
-    border =  Color3.fromRGB(48, 48, 60),
+    bg =      Color3.fromRGB(10, 10, 14),
+    surface = Color3.fromRGB(16, 16, 22),
+    panel =   Color3.fromRGB(22, 22, 30),
+    panel2 =  Color3.fromRGB(28, 28, 40),
+    border =  Color3.fromRGB(44, 44, 58),
+    borderHi= Color3.fromRGB(80, 80, 110),
     accent =  Color3.fromRGB(99, 102, 241),
-    accentHi= Color3.fromRGB(120, 123, 255),
-    text =    Color3.fromRGB(235, 235, 240),
-    sub =     Color3.fromRGB(130, 130, 148),
-    success = Color3.fromRGB(52, 199, 89),
-    warn =    Color3.fromRGB(255, 204, 0),
+    accentHi= Color3.fromRGB(130, 133, 255),
+    accentDim=Color3.fromRGB(50, 52, 140),
+    text =    Color3.fromRGB(228, 228, 238),
+    textDim = Color3.fromRGB(150, 150, 170),
+    sub =     Color3.fromRGB(95, 95, 118),
+    success = Color3.fromRGB(48, 209, 88),
+    warn =    Color3.fromRGB(255, 196, 0),
     err =     Color3.fromRGB(255, 69, 58),
-    numCol =  Color3.fromRGB(150, 200, 255),
-    strCol =  Color3.fromRGB(150, 230, 150),
+    numCol =  Color3.fromRGB(130, 190, 255),
+    strCol =  Color3.fromRGB(130, 220, 130),
     cursor =  Color3.fromRGB(99, 102, 241),
-    diffChg = Color3.fromRGB(255, 200, 60),
-    diffAdd = Color3.fromRGB(52, 199, 89),
-    srchHi =  Color3.fromRGB(80, 70, 20),
-    srchCur = Color3.fromRGB(120, 100, 20),
+    diffChg = Color3.fromRGB(255, 196, 50),
+    diffAdd = Color3.fromRGB(48, 209, 88),
+    srchHi =  Color3.fromRGB(70, 62, 10),
+    srchCur = Color3.fromRGB(110, 96, 14),
+    tag =     Color3.fromRGB(36, 36, 52),
+    sep =     Color3.fromRGB(34, 34, 48),
 }
 
 local v2 = Vector2.new
@@ -59,6 +65,18 @@ local function hidePrefix(p)
     for k,d in pairs(D) do if k:sub(1,#p)==p then d.Visible=false end end
 end
 local function tw(s, sz) return #s*(sz or 13)*0.535 end
+
+-- Rounded box approximation — no Circle support in Matcha, use thin side strips
+-- Visually gives a slightly inset feel; true rounding not possible without Circle
+local function RBox(id, x, y, w, h, color, zi, r)
+    -- Just draw a normal box; we fake "rounding" via the corner clip overlay
+    Box(id.."_c", x, y, w, h, color, zi or 1)
+end
+local function hideRBox(id)
+    hide(id.."_c")
+end
+
+-- (Corner rounding via overlay removed — Matcha Line/Circle APIs too limited)
 
 -- ===== Mouse scroll wheel (pcall — may or may not work in Matcha) =====
 local wheelDelta = 0
@@ -162,6 +180,14 @@ local S = {
 
     -- key repeat
     keyRepeatTimer={},keyRepeatDelay=0.4,keyRepeatRate=0.05,
+
+    -- auto-apply
+    autoApply=false,
+    autoApplyInterval=3.0,
+    autoApplyIntervalInput="3",
+    autoApplyTimer=0,
+    autoApplyCount=0,
+    autoApplyFocused=false,
 
     -- settings
     menuKey=0x70,menuKeyName="F1",
@@ -342,26 +368,50 @@ end
 -- ===== Render =====
 local function renderWindow()
     local x,y,w,h=S.x,S.y,S.w,S.h
-    Box("shad",x+3,y+3,w,h,Color3.fromRGB(0,0,0),0)
-    Box("bg",x,y,w,h,T.bg,1)
-    Outline("bg_o",x,y,w,h,T.border,2)
-    Box("titlebar",x,y,w,TITLE_H,T.surface,2)
-    Ln("title_accent",x+2,y+TITLE_H-1,x+w-2,y+TITLE_H-1,nil,1,3)
-    Txt("title_txt",x+PAD,y+10,"ACS Config Editor",T.text,14,3)
-    Box("close_bg",x+w-28,y+7,22,20,T.panel,3)
-    Txt("close_x",x+w-17,y+17,"x",T.sub,16,4,true)
+    -- shadow
+    Box("shad",x+4,y+4,w,h,Color3.fromRGB(0,0,0),0)
+    -- main window (rounded)
+    RBox("win",x,y,w,h,T.bg,1,6)
+    -- subtle border
+    RBox("win_o",x,y,w,h,T.border,2,6)
+    -- title bar
+    RBox("titlebar",x,y,w,TITLE_H+6,T.panel,2,6)
+    Box("titlebar_sq",x,y+6,w,TITLE_H,T.panel,2) -- square out the bottom of titlebar rounding
+    -- accent bar under title
+    Box("title_accent",x,y+TITLE_H-1,w,1,T.accentDim,3)
+    -- title text
+    Txt("title_txt",x+PAD+2,y+10,"ACS Config Editor",T.text,13,3)
+    -- version pill
+    Box("title_ver",x+w-100,y+10,54,16,T.accentDim,3)
+    Txt("title_ver_t",x+w-73,y+18,"v3",T.accent,10,4,true)
+    -- close button
+    Box("close_bg",x+w-26,y+8,18,18,T.panel2,3)
+    Txt("close_x",x+w-17,y+17,"×",T.sub,14,4,true)
+
+    -- tabs
     local tabs={{"browser","Browser"},{"editor","Editor"},{"settings","Settings"}}
+    local tabW=110
+    Box("tabs_bg",x,y+TITLE_H,w,TAB_H,T.surface,2)
     for i,td in ipairs(tabs) do
-        local tx=x+(i-1)*110; local ty=y+TITLE_H; local active=S.tab==td[1]
-        Box("tab_bg_"..i,tx,ty,110,TAB_H,active and T.panel or T.surface,2)
-        Txt("tab_txt_"..i,tx+55,ty+8,td[2],active and T.text or T.sub,13,3,true)
-        if active then Ln("tab_ul_"..i,tx+2,ty+TAB_H-1,tx+108,ty+TAB_H-1,nil,2,4)
-        else hide("tab_ul_"..i) end
+        local tx=x+(i-1)*tabW; local ty=y+TITLE_H; local active=S.tab==td[1]
+        if active then
+            Box("tab_bg_"..i,tx,ty,tabW,TAB_H,T.panel,3)
+            -- accent underline
+            Box("tab_ul_"..i,tx+4,ty+TAB_H-2,tabW-8,2,T.accent,4)
+        else
+            Box("tab_bg_"..i,tx,ty,tabW,TAB_H,T.surface,3)
+            hide("tab_ul_"..i)
+        end
+        Txt("tab_txt_"..i,tx+tabW/2,ty+9,td[2],
+            active and T.text or T.sub, active and 12 or 11, 4, true)
     end
+    -- tab right separator line
+    Ln("tabs_sep",x,y+TITLE_H+TAB_H-1,x+w,y+TITLE_H+TAB_H-1,nil,1,3)
 end
 
 local function renderBrowser()
     local x,y,w,h=S.x,S.y,S.w,S.h
+    local cx=x+PAD
     local cy=y+HEADER_H+PAD
     -- leave 28px at bottom for status bar
     local lh=h-HEADER_H-PAD*2-28
@@ -432,9 +482,16 @@ local function renderBrowser()
 
     -- status bar — own row below panels, always visible
     local stY=cy+lh+4
-    Box("br_stbg",x+PAD,stY,w-PAD*2,22,T.panel,2)
-    Outline("br_sto",x+PAD,stY,w-PAD*2,22,T.border,3)
-    Txt("br_status",x+PAD+8,stY+5,S.browserStatus,S.browserStatusColor or T.sub,12,3)
+    Box("br_stbg",cx,stY,w-PAD*2,22,T.panel2,2)
+    Outline("br_sto",cx,stY,w-PAD*2,22,T.border,3)
+    -- colored dot indicator
+    if S.browserStatusColor then
+        Box("br_stdot",cx+8,stY+7,8,8,S.browserStatusColor,3)
+        Txt("br_status",cx+22,stY+5,S.browserStatus,S.browserStatusColor,12,3)
+    else
+        hide("br_stdot")
+        Txt("br_status",cx+8,stY+5,S.browserStatus,T.sub,12,3)
+    end
 end
 
 local function renderEditor()
@@ -594,8 +651,13 @@ local function renderEditor()
     Ln("ed_bbl",x,bbY,x+w,bbY,nil,1,3)
     Txt("ed_li",x+PAD,bbY+10,"Ln "..S.cursorLine.." / "..totalLines.."   Col "..S.cursorChar,T.sub,11,3)
     Txt("ed_mode",x+210,bbY+10,S.focused and "  EDITING" or "  READ ONLY",S.focused and T.success or T.sub,11,3)
+    -- auto-apply indicator
+    if S.autoApply then
+        Box("ed_aa_dot",x+330,bbY+13,6,6,T.success,3)
+        Txt("ed_aa_lbl",x+340,bbY+9,"AUTO x"..S.autoApplyCount,T.success,10,3)
+    else hide("ed_aa_dot"); hide("ed_aa_lbl") end
     if S.editorStatus~="" then
-        Txt("ed_st",x+350,bbY+10,S.editorStatus,S.editorStatusColor or T.sub,11,3)
+        Txt("ed_st",x+420,bbY+10,S.editorStatus,S.editorStatusColor or T.sub,11,3)
     else hide("ed_st") end
     local abW=150; local abX=x+w-abW-PAD; local abY=bbY+6
     Box("ed_ap",abX,abY,abW,24,inB(abX,abY,abW,24) and T.accentHi or T.accent,3)
@@ -639,27 +701,108 @@ end
 
 local function renderSettings()
     local x,y,w,h=S.x,S.y,S.w,S.h
+    local cx=x+PAD; local cw=w-PAD*2
     local cy=y+HEADER_H+PAD
-    Box("st_bg",x+PAD,cy,w-PAD*2,h-HEADER_H-PAD*2,T.surface,2)
-    Outline("st_bg_o",x+PAD,cy,w-PAD*2,h-HEADER_H-PAD*2,T.border,3)
-    Txt("st_hdr",x+PAD+12,cy+10,"SETTINGS",T.sub,11,4)
-    Ln("st_hdrl",x+PAD,cy+26,x+w-PAD,cy+26,nil,1,3)
-    Txt("st_keylbl",x+PAD+12,cy+40,"Menu Toggle Hotkey",T.text,13,4)
-    Txt("st_keysub",x+PAD+12,cy+58,"Click the button then press any key to rebind",T.sub,11,4)
-    local btnW=160; local btnX=x+PAD+12; local btnY=cy+80
-    Box("st_keybtn",btnX,btnY,btnW,30,S.listeningForKey and T.accentHi or T.panel,3)
-    Outline("st_keybtn_o",btnX,btnY,btnW,30,S.listeningForKey and T.accent or T.border,3)
-    Txt("st_keytxt",btnX+btnW/2,btnY+15,S.listeningForKey and "Press any key..." or S.menuKeyName,
-        S.listeningForKey and T.accent or T.text,13,4,true)
-    Txt("st_note",x+PAD+12,btnY+42,"Current hotkey: "..S.menuKeyName,T.sub,11,4)
+    local ch=h-HEADER_H-PAD*2
 
-    -- legend for diff view
-    Txt("st_difhdr",x+PAD+12,btnY+80,"Diff Gutter Legend:",T.text,12,4)
-    Box("st_dif1",x+PAD+12,btnY+100,10,10,T.diffAdd,3)
-    Txt("st_dif1t",x+PAD+28,btnY+98,"New line (added)",T.sub,11,4)
-    Box("st_dif2",x+PAD+12,btnY+116,10,10,T.diffChg,3)
-    Txt("st_dif2t",x+PAD+28,btnY+114,"Modified line",T.sub,11,4)
-    Txt("st_searchhint",x+PAD+12,btnY+140,"Search: Ctrl+F in editor   Next: Enter   Close: Escape",T.sub,11,4)
+    -- panel background
+    Box("st_bg",cx,cy,cw,ch,T.surface,2)
+    Outline("st_bg_o",cx,cy,cw,ch,T.border,3)
+
+    local lx=cx+14  -- left content x
+    local ry=cy     -- rolling Y cursor
+
+    -- ===== Section: Hotkey =====
+    ry=ry+10
+    Box("st_s1_tag",lx,ry,cw-28,18,T.tag,3)
+    Txt("st_s1_lbl",lx+8,ry+3,"MENU HOTKEY",T.accent,10,4)
+    ry=ry+26
+    Txt("st_s1_sub",lx,ry,"Press button then tap any key to rebind",T.sub,11,4)
+    ry=ry+18
+
+    local btnW=140; local btnH=26; local btnY=ry
+    local listening=S.listeningForKey
+    Box("st_keybtn",lx,btnY,btnW,btnH,listening and T.accentDim or T.panel2,3)
+    Outline("st_keybtn_o",lx,btnY,btnW,btnH,listening and T.accent or T.border,3)
+    Txt("st_keytxt",lx+btnW/2,btnY+btnH/2,
+        listening and "Press any key…" or S.menuKeyName,
+        listening and T.accentHi or T.text,12,4,true)
+    Txt("st_keynote",lx+btnW+12,btnY+7,"Current: "..S.menuKeyName,T.sub,11,4)
+    ry=ry+btnH+16
+
+    -- divider
+    Box("st_div1",cx+8,ry,cw-16,1,T.sep,3)
+    ry=ry+10
+
+    -- ===== Section: Diff Gutter =====
+    Box("st_s2_tag",lx,ry,cw-28,18,T.tag,3)
+    Txt("st_s2_lbl",lx+8,ry+3,"DIFF GUTTER",T.accent,10,4)
+    ry=ry+26
+    Box("st_dif1",lx,ry+1,10,10,T.diffAdd,3)
+    Txt("st_dif1t",lx+16,ry,"New line (added since load)",T.sub,11,4)
+    ry=ry+16
+    Box("st_dif2",lx,ry+1,10,10,T.diffChg,3)
+    Txt("st_dif2t",lx+16,ry,"Modified line",T.sub,11,4)
+    ry=ry+22
+
+    -- divider
+    Box("st_div2",cx+8,ry,cw-16,1,T.sep,3)
+    ry=ry+10
+
+    -- ===== Section: Auto-Apply =====
+    Box("st_s3_tag",lx,ry,cw-28,18,T.tag,3)
+    Txt("st_s3_lbl",lx+8,ry+3,"AUTO-APPLY",T.accent,10,4)
+    ry=ry+26
+    Txt("st_aa_sub",lx,ry,"Keeps ACS values alive after gun events (fire, reload, equip)",T.sub,11,4)
+    ry=ry+18
+
+    local aaOn=S.autoApply
+    local aaBtnW=100; local aaBtnH=26
+    Box("st_aatog",lx,ry,aaBtnW,aaBtnH,aaOn and T.success or T.panel2,3)
+    Outline("st_aatog_o",lx,ry,aaBtnW,aaBtnH,aaOn and T.success or T.border,3)
+    Txt("st_aatog_t",lx+aaBtnW/2,ry+aaBtnH/2,
+        aaOn and "● ON" or "○ OFF",
+        aaOn and T.bg or T.textDim,12,4,true)
+
+    -- interval
+    Txt("st_aaint_l",lx+aaBtnW+12,ry+7,"Every",T.sub,11,4)
+    local aiX=lx+aaBtnW+58; local aiW=48
+    Box("st_aaint",aiX,ry+2,aiW,22,T.panel2,3)
+    Outline("st_aaint_o",aiX,ry+2,aiW,22,S.autoApplyFocused and T.accent or T.border,4)
+    local aiDisp=S.autoApplyIntervalInput..(S.autoApplyFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
+    Txt("st_aaint_t",aiX+4,ry+6,aiDisp,T.text,11,4)
+    Txt("st_aaint_s",aiX+aiW+6,ry+7,"sec",T.sub,11,4)
+
+    ry=ry+aaBtnH+6
+    if aaOn then
+        Txt("st_aacnt",lx,ry,"Applied "..S.autoApplyCount.." time(s) this session — interval: "
+            ..S.autoApplyInterval.."s",T.success,11,4)
+    else
+        Txt("st_aacnt",lx,ry,"Toggle ON to start. Only applies while Editor tab is active.",T.sub,11,4)
+    end
+    ry=ry+22
+
+    -- divider
+    Box("st_div3",cx+8,ry,cw-16,1,T.sep,3)
+    ry=ry+10
+
+    -- ===== Section: Shortcuts =====
+    Box("st_s4_tag",lx,ry,cw-28,18,T.tag,3)
+    Txt("st_s4_lbl",lx+8,ry+3,"SHORTCUTS",T.accent,10,4)
+    ry=ry+26
+    local shortcuts={
+        {"Ctrl + F","Open search bar in editor"},
+        {"Enter","Next search match"},
+        {"Escape","Close search bar"},
+        {"Ctrl + V","Paste into path / search inputs"},
+        {S.menuKeyName,"Toggle this menu"},
+    }
+    for idx,sc in ipairs(shortcuts) do
+        Box("st_sc_k_"..idx,lx,ry,62,15,T.panel2,3)
+        Txt("st_sc_kt_"..idx,lx+31,ry+2,sc[1],T.accent,10,4,true)
+        Txt("st_sc_vt_"..idx,lx+70,ry+2,sc[2],T.sub,11,4)
+        ry=ry+18
+    end
 end
 
 -- ===== Input handler =====
@@ -693,9 +836,10 @@ local function handleInput(dt)
 
     -- settings
     if S.tab=="settings" then
-        local cy=y+HEADER_H+PAD
-        local btnX=x+PAD+12; local btnY=cy+80
-        if click and inB(btnX,btnY,160,30) then S.listeningForKey=true end
+        local lx=x+PAD+14
+        local ry=y+HEADER_H+PAD+10
+        local btnY=ry+44
+        if click and inB(lx,btnY,140,26) then S.listeningForKey=true end
         if S.listeningForKey then
             for name,id in pairs(KEY_IDS) do
                 if name~="m1" and name~="m2" and name~="lshift" and name~="rshift"
@@ -703,6 +847,42 @@ local function handleInput(dt)
                     if input.clicked[name] then
                         S.menuKey=id; S.menuKeyName=name:upper()
                         S.listeningForKey=false; break
+                    end
+                end
+            end
+        end
+        -- auto-apply: positioned after hotkey (btnY+26+16) + divider(11) + section header(18) + subs(26+18) = btnY+115
+        local aaY=btnY+26+16+11+18+26+18
+        if click and inB(lx,aaY,100,26) then
+            S.autoApply=not S.autoApply; S.autoApplyTimer=0
+            if not S.autoApply then S.autoApplyCount=0 end
+        end
+        local aiX=lx+58+100; local aiY=aaY+2
+        if click and inB(aiX,aiY,48,22) then
+            S.autoApplyFocused=true
+        elseif click then
+            if S.autoApplyFocused then
+                local v=tonumber(S.autoApplyIntervalInput)
+                if v and v>0 then S.autoApplyInterval=math.max(0.5,v)
+                else S.autoApplyIntervalInput=tostring(S.autoApplyInterval) end
+            end
+            S.autoApplyFocused=false
+        end
+        if S.autoApplyFocused then
+            local numKeys={"0","1","2","3","4","5","6","7","8","9","period","backspace","enter"}
+            for _,k in ipairs(numKeys) do
+                if keyRepeating(k,dt) then
+                    if k=="backspace" then S.autoApplyIntervalInput=S.autoApplyIntervalInput:sub(1,-2)
+                    elseif k=="enter" then
+                        S.autoApplyFocused=false
+                        local v=tonumber(S.autoApplyIntervalInput)
+                        if v and v>0 then S.autoApplyInterval=math.max(0.5,v)
+                        else S.autoApplyIntervalInput=tostring(S.autoApplyInterval) end
+                    else
+                        local c=charMap[k] or k
+                        if (c>="0" and c<="9") or c=="." then
+                            S.autoApplyIntervalInput=S.autoApplyIntervalInput..c
+                        end
                     end
                 end
             end
@@ -752,9 +932,17 @@ local function handleInput(dt)
         end
 
         if S.pathFocused then
+            -- Ctrl+V paste
+            if isCtrl() and input.clicked["v"] then
+                local ok,clip=pcall(getclipboard)
+                if ok and type(clip)=="string" then
+                    S.pathInput=S.pathInput..clip:gsub("[^\32-\126]","")
+                end
+            end
             local typeKeys={"a","b","c","d","e","f","g","h","i","j","k","l","m",
                 "n","o","p","q","r","s","t","u","v","w","x","y","z",
-                "0","1","2","3","4","5","6","7","8","9","period","minus","slash","backspace","enter"}
+                "0","1","2","3","4","5","6","7","8","9",
+                "space","period","minus","slash","backspace","enter"}
             for _,k in ipairs(typeKeys) do
                 if keyRepeating(k,dt) then
                     if k=="backspace" then S.pathInput=S.pathInput:sub(1,-2)
@@ -762,7 +950,8 @@ local function handleInput(dt)
                     else
                         local c=charMap[k] or k
                         if #c==1 then
-                            if isShift() then c=c:upper() end
+                            if isShift() and shiftMap[c] then c=shiftMap[c]
+                            elseif isShift() then c=c:upper() end
                             S.pathInput=S.pathInput..c
                         end
                     end
@@ -850,10 +1039,18 @@ local function handleInput(dt)
                 S.searchFocused=true; S.focused=false
             end
             if S.searchFocused then
+                -- Ctrl+V paste into search
+                if isCtrl() and input.clicked["v"] then
+                    local ok,clip=pcall(getclipboard)
+                    if ok and type(clip)=="string" then
+                        S.searchQuery=S.searchQuery..clip:gsub("[^\32-\126]","")
+                        S.searchMatches=buildSearchMatches(S.searchQuery); S.searchMatchIdx=1
+                    end
+                end
                 local typeKeys={"a","b","c","d","e","f","g","h","i","j","k","l","m",
                     "n","o","p","q","r","s","t","u","v","w","x","y","z",
                     "0","1","2","3","4","5","6","7","8","9","space","minus","period",
-                    "slash","underscore","backspace","enter"}
+                    "slash","backspace","enter"}
                 for _,k in ipairs(typeKeys) do
                     if keyRepeating(k,dt) then
                         if k=="backspace" then
@@ -1052,6 +1249,16 @@ RunService.RenderStepped:Connect(function(dt)
     if not S.visible then setrobloxinput(true); return end
 
     handleInput(dt)
+
+    -- auto-apply timer
+    if S.autoApply and S.tab=="editor" and #S.lines>0 then
+        S.autoApplyTimer=S.autoApplyTimer+dt
+        if S.autoApplyTimer>=S.autoApplyInterval then
+            S.autoApplyTimer=0
+            S.autoApplyCount=S.autoApplyCount+1
+            applyLinesGC(S.lines)
+        end
+    end
 
     if S.pathFocused or S.searchFocused or (S.tab=="editor" and S.focused) then
         setrobloxinput(false)
