@@ -836,9 +836,13 @@ local function handleInput(dt)
 
     -- settings
     if S.tab=="settings" then
-        local lx=x+PAD+14
-        local ry=y+HEADER_H+PAD+10
-        local btnY=ry+44
+        local cx=x+PAD; local lx=cx+14
+        -- Mirror renderSettings ry exactly
+        local ry=y+HEADER_H+PAD
+        ry=ry+10              -- section tag start
+        ry=ry+26              -- after tag
+        ry=ry+18              -- after subtitle
+        local btnY=ry         -- hotkey button Y (matches render's btnY=ry)
         if click and inB(lx,btnY,140,26) then S.listeningForKey=true end
         if S.listeningForKey then
             for name,id in pairs(KEY_IDS) do
@@ -851,13 +855,20 @@ local function handleInput(dt)
                 end
             end
         end
-        -- auto-apply: positioned after hotkey (btnY+26+16) + divider(11) + section header(18) + subs(26+18) = btnY+115
-        local aaY=btnY+26+16+11+18+26+18
+        ry=ry+26+16           -- after button (btnH=26) + gap(16)
+        ry=ry+10              -- divider+gap
+        ry=ry+26              -- diff tag
+        ry=ry+16              -- diff item 1
+        ry=ry+22              -- diff item 2
+        ry=ry+10              -- divider+gap
+        ry=ry+26              -- auto tag
+        ry=ry+18              -- auto subtitle
+        local aaY=ry          -- auto toggle button Y (matches render)
         if click and inB(lx,aaY,100,26) then
             S.autoApply=not S.autoApply; S.autoApplyTimer=0
             if not S.autoApply then S.autoApplyCount=0 end
         end
-        local aiX=lx+58+100; local aiY=aaY+2
+        local aiX=lx+100+58; local aiY=aaY+2
         if click and inB(aiX,aiY,48,22) then
             S.autoApplyFocused=true
         elseif click then
