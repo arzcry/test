@@ -29,11 +29,32 @@ local T = {
     srchCur = Color3.fromRGB(110, 96, 14),
     tag =     Color3.fromRGB(36, 36, 52),
     sep =     Color3.fromRGB(34, 34, 48),
+    hintNum = Color3.fromRGB(100, 160, 255),
+    hintBool= Color3.fromRGB(255, 150, 80),
+    hintOk  = Color3.fromRGB(48, 209, 88),
+    hintBad = Color3.fromRGB(255, 69, 58),
+    hintVec = Color3.fromRGB(200, 130, 255),
 }
 
 local v2 = Vector2.new
 local D = {}
 local CHAR_W = 13 * 0.535
+local CR = 5  -- corner radius for UI elements
+
+-- ===== Themes =====
+local THEMES = {
+    {name="Dark",       bg=Color3.fromRGB(10,10,14),   surface=Color3.fromRGB(16,16,22),  panel=Color3.fromRGB(22,22,30),   panel2=Color3.fromRGB(28,28,40),  border=Color3.fromRGB(44,44,58),   accent=Color3.fromRGB(99,102,241),  accentHi=Color3.fromRGB(130,133,255), accentDim=Color3.fromRGB(50,52,140)},
+    {name="OLED",       bg=Color3.fromRGB(0,0,0),      surface=Color3.fromRGB(10,10,10),  panel=Color3.fromRGB(16,16,16),   panel2=Color3.fromRGB(22,22,22),  border=Color3.fromRGB(40,40,40),   accent=Color3.fromRGB(99,102,241),  accentHi=Color3.fromRGB(130,133,255), accentDim=Color3.fromRGB(40,42,120)},
+    {name="Midnight",   bg=Color3.fromRGB(8,10,20),    surface=Color3.fromRGB(12,16,32),  panel=Color3.fromRGB(18,22,44),   panel2=Color3.fromRGB(22,28,56),  border=Color3.fromRGB(40,50,90),   accent=Color3.fromRGB(80,140,255),  accentHi=Color3.fromRGB(120,170,255), accentDim=Color3.fromRGB(30,60,140)},
+    {name="Forest",     bg=Color3.fromRGB(8,14,10),    surface=Color3.fromRGB(12,20,14),  panel=Color3.fromRGB(16,28,18),   panel2=Color3.fromRGB(20,34,22),  border=Color3.fromRGB(36,60,40),   accent=Color3.fromRGB(48,200,90),   accentHi=Color3.fromRGB(80,220,120),  accentDim=Color3.fromRGB(20,80,36)},
+    {name="Rose",       bg=Color3.fromRGB(18,10,12),   surface=Color3.fromRGB(26,14,18),  panel=Color3.fromRGB(34,18,24),   panel2=Color3.fromRGB(42,22,30),  border=Color3.fromRGB(80,40,52),   accent=Color3.fromRGB(240,80,120),  accentHi=Color3.fromRGB(255,120,150), accentDim=Color3.fromRGB(120,30,56)},
+}
+local function applyTheme(idx)
+    local th=THEMES[idx]
+    if not th then return end
+    T.bg=th.bg; T.surface=th.surface; T.panel=th.panel; T.panel2=th.panel2
+    T.border=th.border; T.accent=th.accent; T.accentHi=th.accentHi; T.accentDim=th.accentDim
+end
 
 local function Ln(id, x1, y1, x2, y2, color, thick, zi)
     if not D[id] then D[id] = Drawing.new("Line") end
@@ -41,24 +62,34 @@ local function Ln(id, x1, y1, x2, y2, color, thick, zi)
     d.From = v2(x1,y1); d.To = v2(x2,y2)
     d.Thickness = thick or 1; d.ZIndex = zi or 2; d.Visible = true
 end
-local function Box(id, x, y, w, h, color, zi)
+local function Box(id, x, y, w, h, color, zi, corner)
     if not D[id] then D[id] = Drawing.new("Square") end
     local d = D[id]
     d.Position = v2(x,y); d.Size = v2(w,h)
-    d.Color = color; d.Filled = true; d.ZIndex = zi or 1; d.Visible = true
+    d.Color = color; d.Filled = true; d.ZIndex = zi or 1
+    d.Corner = corner or 0; d.Visible = true
 end
-local function Outline(id, x, y, w, h, color, zi)
+local function Outline(id, x, y, w, h, color, zi, corner)
     if not D[id] then D[id] = Drawing.new("Square") end
     local d = D[id]
     d.Position = v2(x,y); d.Size = v2(w,h)
-    d.Color = color; d.Filled = false; d.ZIndex = zi or 2; d.Visible = true
+    d.Color = color; d.Filled = false; d.ZIndex = zi or 2
+    d.Corner = corner or 0; d.Visible = true
 end
 local function Txt(id, x, y, str, color, size, zi, center)
     if not D[id] then D[id] = Drawing.new("Text") end
     local d = D[id]
     d.Position = v2(x,y); d.Text = tostring(str); d.Color = color
-    d.Size = size or 13; d.Font = Drawing.Fonts.UI; d.Outline = false
+    d.Size = size or 13; d.Font = Drawing.Fonts.SystemBold; d.Outline = false
     d.Center = center or false; d.ZIndex = zi or 3; d.Visible = true
+end
+-- Code font variant — JetBrains Mono for editor text spans
+local function TxtCode(id, x, y, str, color, size, zi)
+    if not D[id] then D[id] = Drawing.new("Text") end
+    local d = D[id]
+    d.Position = v2(x,y); d.Text = tostring(str); d.Color = color
+    d.Size = size or 13; d.Font = Drawing.Fonts.Monospace; d.Outline = false
+    d.Center = false; d.ZIndex = zi or 3; d.Visible = true
 end
 local function hide(id) if D[id] then D[id].Visible = false end end
 local function hidePrefix(p)
@@ -142,6 +173,7 @@ local PAD=10; local TITLE_H=34; local TAB_H=30
 local HEADER_H=TITLE_H+TAB_H; local LINE_H=18; local SIDEBAR_W=220
 local PATHBAR_H=22; local LIBAR_H=22; local BBH=36; local HSB_H=10
 local DIFF_W=4; local LN_W=50; local SB_W=8
+local TAB_BAR_H=26; local MAX_TABS=6
 local prevTab=""
 
 -- ===== State =====
@@ -167,7 +199,8 @@ local S = {
     focused=false,
     editorStatus="",editorStatusColor=nil,
     currentPath="",
-    currentInst=nil,   -- for reload
+    currentInst=nil,
+    editValueInst=nil, editValueType="",  -- for direct value editing
     scrollDragging=false,
     scrollXDragging=false,
 
@@ -178,7 +211,17 @@ local S = {
     searchMatches={},
     searchMatchIdx=1,
 
-    -- key repeat
+    -- editor tabs
+    tabs={},        -- array of saved tab snapshots
+    activeTab=1,
+
+    -- script search (browser)
+    scriptSearch="",
+    scriptSearchFocused=false,
+    scriptSearchMode=false,
+    scriptSearchResults={},
+    scriptSearchScroll=0,
+    scriptSearchFilter="scripts", -- "scripts" or "all"
     keyRepeatTimer={},keyRepeatDelay=0.4,keyRepeatRate=0.05,
 
     -- auto-apply
@@ -192,12 +235,255 @@ local S = {
     -- settings
     menuKey=0x70,menuKeyName="F1",
     listeningForKey=false,
+
+    -- undo/redo (per-tab via snapshot)
+    undoStack={},
+    redoStack={},
+
+    -- browser
+    browserFilter="scripts",
+    browserSubTab="tool",  -- "tool" = tool explorer, "game" = game-wide search
+    themeIdx=1,
+
+    -- GC browser
+    gcBrowseMode=false,
+    gcBrowseResults={},
+    gcBrowseScroll=0,
+    gcBrowseFilter="config",
+    gcBrowseStatus="",
+
+    -- presets
+    presets={},
+    presetSel=1,
+    presetNameInput="",
+    presetNameFocused=false,
+
+    settingsScroll=0,       -- settings panel vertical scroll
+    settingsScrollDrag=false,
+    lineJumpOpen=false,
+    lineJumpInput="",
+    lineJumpFocused=false,
+
+    -- bulk GC setter
+    gcBulkSel={},
+    gcBulkValue="",
+    gcBulkFocused=false,
+
+    -- pinned scripts
+    pinnedScripts={},
+
+    -- explorer navigation (tool drill-down)
+    navStack={},      -- [{inst,name}] breadcrumb
+    navItems={},      -- current level: [{inst,name,class,isScript,isValue,hasChildren,currentVal}]
+    navScroll=0,
+    navSel=1,
+
+    -- explorer search filter (replaces scriptSearchFilter with more classes)
+    explorerFilter="all",  -- "all","scripts","values","parts","folders","humanoid"
+
+    -- cross-file search (Ctrl+Shift+F)
+    crossSearchOpen=false,
+    crossSearchQuery="",
+    crossSearchFocused=false,
+    crossSearchResults={},  -- [{tabIdx,tabLabel,lineIdx,line}]
+
+    -- value diff panel
+    diffPanelOpen=false,
+    diffResults={},         -- [{key,requested,actual,match}]
 }
 
 -- ===== Helpers =====
 local function deepCopy(t)
     local c={}; for i,v in ipairs(t) do c[i]=v end; return c
 end
+
+-- ===== Tab management =====
+local function makeTabSnapshot()
+    return {
+        lines=S.lines, originalLines=S.originalLines,
+        scroll=S.scroll, scrollX=S.scrollX,
+        cursorLine=S.cursorLine, cursorChar=S.cursorChar,
+        currentPath=S.currentPath, currentInst=S.currentInst,
+        editorStatus=S.editorStatus, editorStatusColor=S.editorStatusColor,
+        searchOpen=S.searchOpen, searchQuery=S.searchQuery,
+        searchMatches=S.searchMatches, searchMatchIdx=S.searchMatchIdx,
+        undoStack=S.undoStack, redoStack=S.redoStack,
+        editValueInst=S.editValueInst, editValueType=S.editValueType,
+    }
+end
+local function restoreTabSnapshot(t)
+    S.lines=t.lines; S.originalLines=t.originalLines
+    S.scroll=t.scroll; S.scrollX=t.scrollX
+    S.cursorLine=t.cursorLine; S.cursorChar=t.cursorChar
+    S.currentPath=t.currentPath; S.currentInst=t.currentInst
+    S.editorStatus=t.editorStatus; S.editorStatusColor=t.editorStatusColor
+    S.searchOpen=t.searchOpen or false; S.searchQuery=t.searchQuery or ""
+    S.searchMatches=t.searchMatches or {}; S.searchMatchIdx=t.searchMatchIdx or 1
+    S.undoStack=t.undoStack or {}; S.redoStack=t.redoStack or {}
+    S.editValueInst=t.editValueInst or nil; S.editValueType=t.editValueType or ""
+    S.focused=false
+end
+local function getTabLabel(t)
+    if not t or t.currentPath=="" then return "Untitled" end
+    return t.currentPath:match("[^%.]+$") or "?"
+end
+local function saveActiveTab()
+    if #S.tabs>0 then S.tabs[S.activeTab]=makeTabSnapshot() end
+end
+local function switchTab(idx)
+    saveActiveTab(); restoreTabSnapshot(S.tabs[idx]); S.activeTab=idx
+end
+local function newTab()
+    if #S.tabs>=MAX_TABS then return end
+    saveActiveTab()
+    table.insert(S.tabs,{
+        lines={},originalLines={},scroll=0,scrollX=0,
+        cursorLine=1,cursorChar=1,currentPath="",currentInst=nil,
+        editorStatus="New tab — type key=value pairs, or load a script via Browser",
+        editorStatusColor=nil,
+        searchOpen=false,searchQuery="",searchMatches={},searchMatchIdx=1,
+    })
+    restoreTabSnapshot(S.tabs[#S.tabs]); S.activeTab=#S.tabs
+end
+local function closeTab(idx)
+    if #S.tabs<=1 then
+        -- reset to empty instead of closing
+        S.tabs[1]={lines={},originalLines={},scroll=0,scrollX=0,
+            cursorLine=1,cursorChar=1,currentPath="",currentInst=nil,
+            editorStatus="",editorStatusColor=nil,
+            searchOpen=false,searchQuery="",searchMatches={},searchMatchIdx=1}
+        restoreTabSnapshot(S.tabs[1]); S.activeTab=1; return
+    end
+    table.remove(S.tabs,idx)
+    local newIdx=math.max(1,math.min(idx,#S.tabs))
+    restoreTabSnapshot(S.tabs[newIdx]); S.activeTab=newIdx
+end
+-- Open lines in a tab; reuses existing tab for same path or opens new one
+local function openInTab(lines,path,inst,statusMsg)
+    for i,t in ipairs(S.tabs) do
+        if t.currentPath==path then switchTab(i); return end
+    end
+    local snap={
+        lines=lines,originalLines=deepCopy(lines),
+        scroll=0,scrollX=0,cursorLine=1,cursorChar=1,
+        currentPath=path,currentInst=inst,
+        editorStatus=statusMsg or "Loaded "..#lines.." lines",
+        editorStatusColor=T.success,
+        searchOpen=false,searchQuery="",searchMatches={},searchMatchIdx=1,
+    }
+    -- reuse current tab if empty
+    if #S.lines==0 and S.currentPath=="" then
+        S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap); return
+    end
+    -- open new tab if space
+    if #S.tabs<MAX_TABS then
+        saveActiveTab()
+        table.insert(S.tabs,snap)
+        restoreTabSnapshot(snap); S.activeTab=#S.tabs
+    else
+        -- replace active tab
+        S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap)
+    end
+end
+
+local VALUE_TYPES={"NumberValue","BoolValue","StringValue","IntValue",
+    "DoubleConstrainedValue","IntConstrainedValue","Vector3Value","Color3Value"}
+local function isScriptType(c)
+    return c:IsA("ModuleScript") or c:IsA("LocalScript") or c:IsA("Script")
+end
+local function isValueType(c)
+    for _,t in ipairs(VALUE_TYPES) do if c:IsA(t) then return true end end
+    return false
+end
+
+local PART_TYPES={"Part","MeshPart","WedgePart","SpecialMesh","UnionOperation","TrussPart","CornerWedgePart"}
+local function isPartType(c)
+    for _,t in ipairs(PART_TYPES) do if c:IsA(t) then return true end end
+    return c:IsA("BasePart")
+end
+local function isContainerType(c)
+    return c:IsA("Folder") or c:IsA("Model") or c:IsA("Configuration")
+end
+
+-- Build nav items for current explorer level
+local function buildNavItems(inst)
+    local items={}
+    local ok,children=pcall(function() return inst:GetChildren() end)
+    if not ok then return items end
+    for _,c in ipairs(children) do
+        local isSc=isScriptType(c); local isVal=isValueType(c)
+        local isPart=isPartType(c); local isCont=isContainerType(c)
+        local hasChildren=false
+        local ok2,ch=pcall(function() return c:GetChildren() end)
+        if ok2 then hasChildren=#ch>0 end
+        -- Read current value for value types
+        local currentVal=""
+        if isVal then
+            local ok3,v=pcall(function() return c.Value end)
+            if ok3 and v~=nil then currentVal=" = "..tostring(v) end
+        end
+        local icon = isSc and "📜" or isVal and "🔢" or isPart and "⬜" or isCont and "📁" or "•"
+        table.insert(items,{
+            inst=c, name=c.Name, class=c.ClassName,
+            isScript=isSc, isValue=isVal, isPart=isPart, isContainer=isCont,
+            hasChildren=hasChildren, currentVal=currentVal, icon=icon,
+        })
+    end
+    table.sort(items,function(a,b)
+        -- containers first, then scripts, then values, then parts, then other
+        local function rank(x) return x.isContainer and 0 or x.isScript and 1 or x.isValue and 2 or x.isPart and 4 or 3 end
+        local ra,rb=rank(a),rank(b)
+        if ra~=rb then return ra<rb end
+        return a.name<b.name
+    end)
+    return items
+end
+local function searchAllScripts(query, filterMode)
+    local results={}
+    if query=="" then return results end
+    local q=query:lower()
+    local ok,desc=pcall(function() return game:GetDescendants() end)
+    if not ok then return results end
+    for _,inst in ipairs(desc) do
+        local isSc=isScriptType(inst)
+        local isVal=isValueType(inst)
+        local isPt=isPartType(inst)
+        local isCnt=isContainerType(inst)
+        local include
+        if filterMode=="scripts" then include=isSc
+        elseif filterMode=="values" then include=isVal
+        elseif filterMode=="parts" then include=isPt
+        elseif filterMode=="folders" then include=isCnt
+        elseif filterMode=="humanoid" then
+            local ok2,h=pcall(function() return inst:IsA("Humanoid") end)
+            include=ok2 and h
+        else include=true end
+        if include and inst.Name:lower():find(q,1,true) then
+            local pname=inst.Parent and inst.Parent.Name or "?"
+            local cv=""
+            if isVal then
+                local ok2,v=pcall(function() return inst.Value end)
+                if ok2 then cv=" = "..tostring(v) end
+            end
+            table.insert(results,{
+                label=inst.Name.." ["..inst.ClassName.."] › "..pname..cv,
+                inst=inst, isScript=isSc, isValue=isVal,
+            })
+            if #results>=80 then break end
+        end
+    end
+    return results
+end
+
+-- Initialize first tab
+S.tabs[1] = {
+    lines=S.lines, originalLines=S.originalLines,
+    scroll=S.scroll, scrollX=S.scrollX,
+    cursorLine=S.cursorLine, cursorChar=S.cursorChar,
+    currentPath=S.currentPath, currentInst=S.currentInst,
+    editorStatus=S.editorStatus, editorStatusColor=S.editorStatusColor,
+    searchOpen=false, searchQuery="", searchMatches={}, searchMatchIdx=1,
+}
 
 local function scanTools()
     local tools={}
@@ -215,11 +501,20 @@ local function scanTools()
     return tools
 end
 
-local function getScripts(tool)
+local function getScripts(tool, filterMode)
+    if not tool then return {} end
+    filterMode = filterMode or "scripts"
     local found={}
     for _,c in ipairs(tool:GetDescendants()) do
-        if c:IsA("ModuleScript") or c:IsA("LocalScript") or c:IsA("Script") then
-            table.insert(found,{label=c.Name.." ["..c.ClassName.."]",inst=c})
+        local isSc=isScriptType(c); local isVal=isValueType(c)
+        local include = (filterMode=="all" and (isSc or isVal))
+            or (filterMode=="values" and isVal)
+            or (filterMode=="scripts" and isSc)
+        if include then
+            table.insert(found,{
+                label=c.Name.." ["..c.ClassName.."]",
+                inst=c, isScript=isSc, isValue=isVal,
+            })
         end
     end
     table.sort(found,function(a,b) return a.label<b.label end)
@@ -227,12 +522,43 @@ local function getScripts(tool)
 end
 
 local function decompileToLines(inst)
+    -- For ModuleScripts, try require() to get the actual config table
+    if inst:IsA("ModuleScript") then
+        local ok,result=pcall(require,inst)
+        if ok and type(result)=="table" then
+            local lines={}
+            local sorted={}
+            for k,v in pairs(result) do
+                local vt=type(v)
+                if vt=="number" or vt=="boolean" or vt=="string" then
+                    table.insert(sorted,{k=tostring(k),v=v,vt=vt})
+                end
+            end
+            table.sort(sorted,function(a,b) return a.k<b.k end)
+            for _,entry in ipairs(sorted) do
+                local val
+                if entry.vt=="boolean" then val=tostring(entry.v)
+                elseif entry.vt=="string" then val='"'..entry.v..'"'
+                else val=tostring(entry.v) end
+                table.insert(lines,entry.k.." = "..val)
+            end
+            if #lines>0 then return lines,nil end
+        end
+    end
+    -- Fall back to decompile()
     local ok,src=pcall(decompile,inst)
-    if not ok or not src or src=="" then return nil,"decompile() failed" end
+    if not ok or not src or src=="" then return nil,"decompile() failed — try Values filter" end
     local lines={}
     for l in (src.."\n"):gmatch("([^\n]*)\n") do table.insert(lines,l) end
     if lines[#lines]=="" then table.remove(lines) end
-    return lines,nil
+    -- Try to extract only key=value lines if the output looks like bytecode
+    local kvLines={}
+    for _,l in ipairs(lines) do
+        if l:match("^%s*[%w_]+%s*=") and not l:match("^%-%-") then
+            table.insert(kvLines,l)
+        end
+    end
+    return (#kvLines>3 and kvLines or lines),nil
 end
 
 local function resolvePathString(path)
@@ -307,6 +633,154 @@ local function buildSearchMatches(query)
     return matches
 end
 
+-- ===== Undo/Redo =====
+local MAX_UNDO = 60
+local function pushUndo()
+    if #S.undoStack >= MAX_UNDO then table.remove(S.undoStack, 1) end
+    table.insert(S.undoStack, {
+        lines=deepCopy(S.lines),
+        cursorLine=S.cursorLine, cursorChar=S.cursorChar,
+    })
+    S.redoStack = {}
+end
+local function doUndo()
+    if #S.undoStack == 0 then return end
+    table.insert(S.redoStack, {
+        lines=deepCopy(S.lines),
+        cursorLine=S.cursorLine, cursorChar=S.cursorChar,
+    })
+    local st=table.remove(S.undoStack)
+    S.lines=st.lines; S.cursorLine=st.cursorLine; S.cursorChar=st.cursorChar
+end
+local function doRedo()
+    if #S.redoStack == 0 then return end
+    table.insert(S.undoStack, {
+        lines=deepCopy(S.lines),
+        cursorLine=S.cursorLine, cursorChar=S.cursorChar,
+    })
+    local st=table.remove(S.redoStack)
+    S.lines=st.lines; S.cursorLine=st.cursorLine; S.cursorChar=st.cursorChar
+end
+
+-- ===== Value type hint =====
+local function getLineHint(line)
+    local key,val=line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
+    if not key or val=="" then return nil end
+    if val=="true" or val=="false" then return "bool" end
+    if tonumber(val) then return "num" end
+    if val:match("^{%s*[%d%.%-]+%s*,%s*[%d%.%-]+%s*}$") then return "vec" end
+    return "bad"
+end
+
+-- ===== GC Browser =====
+local function browseGCAll(filterMode)
+    -- try getgc with no args first, then empty table
+    local ok,entries=pcall(getgc)
+    if not ok or type(entries)~="table" or #entries==0 then
+        ok,entries=pcall(getgc,{})
+    end
+    if not ok then return nil,"getgc() failed: "..tostring(entries) end
+    if type(entries)~="table" then return nil,"getgc() returned unexpected type" end
+
+    local results={}
+    local seen={}
+    for _,entry in ipairs(entries) do
+        if type(entry)=="table" and entry.key then
+            local k=tostring(entry.key)
+            local vt=entry.type or type(entry.value)
+            local include
+            if filterMode=="all" then
+                include=(vt=="number" or vt=="boolean" or vt=="string")
+            else  -- "config": only nums + bools (typical ACS values)
+                include=(vt=="number" or vt=="boolean")
+            end
+            -- only valid identifier names, no duplicates
+            if include and k:match("^[%a_][%w_]*$") and not seen[k] then
+                seen[k]=true
+                table.insert(results,{
+                    key=k,
+                    val=tostring(entry.value),
+                    vtype=vt,
+                    label=k.." = "..tostring(entry.value),
+                })
+            end
+        end
+    end
+    table.sort(results,function(a,b) return a.key<b.key end)
+    return results,nil
+end
+
+-- ===== Presets =====
+-- ===== Cross-file search =====
+local function runCrossSearch(query)
+    if query=="" then return {} end
+    local q=query:lower()
+    local results={}
+    -- save current tab so we can search it too
+    saveActiveTab()
+    for ti,t in ipairs(S.tabs) do
+        local lbl=getTabLabel(t)
+        for li,line in ipairs(t.lines or {}) do
+            if line:lower():find(q,1,true) then
+                table.insert(results,{tabIdx=ti,tabLabel=lbl,lineIdx=li,line=line})
+                if #results>=100 then return results end
+            end
+        end
+    end
+    return results
+end
+
+-- ===== Value diff =====
+local function runValueDiff(appliedPairs)
+    -- appliedPairs: [{key,value}] of what we just tried to setgc
+    local results={}
+    local keys={}; for _,p in ipairs(appliedPairs) do table.insert(keys,p.key) end
+    local ok,gcEntries=pcall(getgc,keys)
+    local gcMap={}
+    if ok and type(gcEntries)=="table" then
+        for _,e in ipairs(gcEntries) do if e.key then gcMap[e.key]=tostring(e.value) end end
+    end
+    for _,p in ipairs(appliedPairs) do
+        local actual=gcMap[p.key]
+        table.insert(results,{
+            key=p.key, requested=p.value,
+            actual=actual or "(not in GC)",
+            match=(actual==p.value),
+        })
+    end
+    return results
+end
+
+local function savePreset(name, lines)
+    -- check for duplicate name
+    for i,p in ipairs(S.presets) do
+        if p.name==name then S.presets[i].lines=deepCopy(lines); return end
+    end
+    table.insert(S.presets,{name=name,lines=deepCopy(lines)})
+end
+local function applyPreset(idx)
+    local p=S.presets[idx]
+    if not p then return end
+    local snap={
+        lines=deepCopy(p.lines),originalLines=deepCopy(p.lines),
+        scroll=0,scrollX=0,cursorLine=1,cursorChar=1,
+        currentPath="[Preset] "..p.name,currentInst=nil,
+        editorStatus="Preset loaded: "..p.name,editorStatusColor=T.success,
+        searchOpen=false,searchQuery="",searchMatches={},searchMatchIdx=1,
+        undoStack={},redoStack={},
+    }
+    saveActiveTab()
+    if #S.lines==0 and S.currentPath=="" then
+        S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap)
+    elseif #S.tabs<MAX_TABS then
+        table.insert(S.tabs,snap)
+        restoreTabSnapshot(snap); S.activeTab=#S.tabs
+    else
+        S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap)
+    end
+    S.tab="editor"
+end
+
 local KEYWORDS={
     ["local"]=true,["function"]=true,["return"]=true,["end"]=true,
     ["if"]=true,["then"]=true,["else"]=true,["elseif"]=true,
@@ -355,14 +829,15 @@ end
 local function edLayout()
     local searchH = S.searchOpen and 22 or 0
     local edY = S.y+HEADER_H
-    local pathBarY = edY
-    local searchBarY = edY+PATHBAR_H
-    local liBarY = edY+PATHBAR_H+searchH
-    local codeY = edY+PATHBAR_H+searchH+LIBAR_H
-    local codeH = S.h-HEADER_H-PATHBAR_H-searchH-LIBAR_H-BBH-HSB_H
+    local tabBarY = edY
+    local pathBarY = edY+TAB_BAR_H
+    local searchBarY = edY+TAB_BAR_H+PATHBAR_H
+    local liBarY = edY+TAB_BAR_H+PATHBAR_H+searchH
+    local codeY = edY+TAB_BAR_H+PATHBAR_H+searchH+LIBAR_H
+    local codeH = S.h-HEADER_H-TAB_BAR_H-PATHBAR_H-searchH-LIBAR_H-BBH-HSB_H
     local codeW = S.w-LN_W-DIFF_W-SB_W-4
     local codeStartX = S.x+LN_W+DIFF_W+4
-    return edY,pathBarY,searchBarY,liBarY,codeY,codeH,codeW,codeStartX
+    return edY,pathBarY,searchBarY,liBarY,codeY,codeH,codeW,codeStartX,tabBarY
 end
 
 -- ===== Render =====
@@ -375,8 +850,8 @@ local function renderWindow()
     -- subtle border
     RBox("win_o",x,y,w,h,T.border,2,6)
     -- title bar
-    RBox("titlebar",x,y,w,TITLE_H+6,T.panel,2,6)
-    Box("titlebar_sq",x,y+6,w,TITLE_H,T.panel,2) -- square out the bottom of titlebar rounding
+    RBox("titlebar",x,y,w,TITLE_H+6,T.panel,2,6,CR)
+    Box("titlebar_sq",x,y+6,w,TITLE_H,T.panel,2,CR) -- square out the bottom of titlebar rounding
     -- accent bar under title
     Box("title_accent",x,y+TITLE_H-1,w,1,T.accentDim,3)
     -- title text
@@ -391,7 +866,7 @@ local function renderWindow()
     -- tabs
     local tabs={{"browser","Browser"},{"editor","Editor"},{"settings","Settings"}}
     local tabW=110
-    Box("tabs_bg",x,y+TITLE_H,w,TAB_H,T.surface,2)
+    Box("tabs_bg",x,y+TITLE_H,w,TAB_H,T.surface,2,CR)
     for i,td in ipairs(tabs) do
         local tx=x+(i-1)*tabW; local ty=y+TITLE_H; local active=S.tab==td[1]
         if active then
@@ -413,78 +888,311 @@ local function renderBrowser()
     local x,y,w,h=S.x,S.y,S.w,S.h
     local cx=x+PAD
     local cy=y+HEADER_H+PAD
-    -- leave 28px at bottom for status bar
     local lh=h-HEADER_H-PAD*2-28
+    local subTab=S.browserSubTab  -- "tool" or "game"
 
-    -- left panel: tools
-    Box("br_lbg",x+PAD,cy,SIDEBAR_W,lh,T.surface,2)
-    Outline("br_lbg_o",x+PAD,cy,SIDEBAR_W,lh,T.border,3)
-    Txt("br_lhdr",x+PAD+8,cy+6,"TOOLS",T.sub,11,4)
-    Ln("br_lhl",x+PAD,cy+22,x+PAD+SIDEBAR_W,cy+22,nil,1,3)
-
-    local toolListY=cy+26; local scanBtnY=cy+lh-32
-    local toolVis=math.floor((scanBtnY-toolListY-4)/22)
-    for i=1,toolVis do
-        local tool=S.tools[i]
-        if not tool then hide("br_ti_"..i); hide("br_tt_"..i) break end
-        local iy=toolListY+(i-1)*22; local sel=S.toolSel==i
-        local hov=inB(x+PAD+1,iy,SIDEBAR_W-2,21)
-        Box("br_ti_"..i,x+PAD+1,iy,SIDEBAR_W-2,21,sel and T.accent or (hov and T.panel or T.surface),3)
-        local lbl=tool.label
-        if tw(lbl,12)>SIDEBAR_W-16 then lbl=lbl:sub(1,26).."…" end
-        Txt("br_tt_"..i,x+PAD+8,iy+4,lbl,sel and T.text or T.sub,12,4)
-    end
-    for i=#S.tools+1,toolVis+2 do hide("br_ti_"..i); hide("br_tt_"..i) end
-
-    Box("br_scan",x+PAD,scanBtnY,SIDEBAR_W,28,inB(x+PAD,scanBtnY,SIDEBAR_W,28) and T.accentHi or T.accent,3)
-    Txt("br_scan_t",x+PAD+SIDEBAR_W/2,scanBtnY+14,"Scan Inventory",T.text,13,4,true)
-
-    -- right panel: scripts
-    local rx=x+PAD+SIDEBAR_W+PAD; local rw=w-SIDEBAR_W-PAD*3
-    Box("br_rbg",rx,cy,rw,lh,T.surface,2)
-    Outline("br_rbg_o",rx,cy,rw,lh,T.border,3)
-    Txt("br_rhdr",rx+8,cy+6,"SCRIPTS IN SELECTED TOOL",T.sub,11,4)
-    Ln("br_rhl",rx,cy+22,rx+rw,cy+22,nil,1,3)
-
-    local piy=cy+28; local piw=rw-16-76
-    Box("br_pi_bg",rx+8,piy,piw,22,T.panel,3)
-    Outline("br_pi_o",rx+8,piy,piw,22,S.pathFocused and T.accent or T.border,3)
-    local pd=S.pathInput
-    if pd=="" and not S.pathFocused then
-        Txt("br_pi_t",rx+14,piy+4,"or paste path: game.X.Y.Script",T.sub,11,4)
+    -- ===== Sub-tab header bar =====
+    local subBarH=24
+    Box("br_subbar",cx,cy,w-PAD*2,subBarH,T.panel2,2)
+    local stW=(w-PAD*2)/2
+    -- Tool Browser tab
+    local toolActive=subTab=="tool"
+    Box("br_st_tool",cx,cy,stW,subBarH,toolActive and T.panel or T.surface,3)
+    Txt("br_st_tool_t",cx+stW/2,cy+subBarH/2,"Tool Browser",toolActive and T.text or T.sub,11,4,true)
+    -- Game Browser tab
+    local gameActive=subTab=="game"
+    Box("br_st_game",cx+stW,cy,stW,subBarH,gameActive and T.panel or T.surface,3)
+    Txt("br_st_game_t",cx+stW+stW/2,cy+subBarH/2,"Game Browser",gameActive and T.text or T.sub,11,4,true)
+    -- active underline
+    if toolActive then
+        Box("br_st_ul",cx,cy+subBarH-2,stW,2,T.accent,4)
+        hide("br_st_ul2")
     else
-        if S.pathFocused then pd=pd..(math.floor(tick()*2)%2==0 and "|" or " ") end
-        Txt("br_pi_t",rx+14,piy+4,pd,T.text,11,4)
+        Box("br_st_ul2",cx+stW,cy+subBarH-2,stW,2,T.accent,4)
+        hide("br_st_ul")
     end
-    local lpx=rx+8+piw+6
-    Box("br_lp_bg",lpx,piy,70,22,inB(lpx,piy,70,22) and T.accentHi or T.accent,3)
-    Txt("br_lp_t",lpx+35,piy+11,"Load Path",T.text,11,4,true)
+    Ln("br_st_sep",cx,cy+subBarH,cx+w-PAD*2,cy+subBarH,nil,1,3)
 
-    local slY=cy+58; local loadBtnY=cy+lh-32
-    local sVis=math.floor((loadBtnY-slY-4)/22)
-    for i=1,sVis do
-        local sc=S.scripts[i]
-        if not sc then hide("br_si_"..i); hide("br_st_"..i) break end
-        local iy=slY+(i-1)*22; local sel=S.scriptSel==i
-        local hov=inB(rx+1,iy,rw-2,21)
-        Box("br_si_"..i,rx+1,iy,rw-2,21,sel and T.accent or (hov and T.panel or T.surface),3)
-        local lbl=sc.label
-        if tw(lbl,12)>rw-16 then lbl=lbl:sub(1,60).."…" end
-        Txt("br_st_"..i,rx+8,iy+4,lbl,sel and T.text or T.sub,12,4)
+    local panelY=cy+subBarH+2
+    local panelH=lh-subBarH-2
+
+    -- ====================================================
+    -- TOOL BROWSER
+    -- ====================================================
+    if subTab=="tool" then
+        -- Hide all game browser elements
+        for _,id in ipairs({
+            "br_game_input","br_game_input_o","br_game_input_t",
+            "br_game_go","br_game_go_t","br_game_gc","br_game_gc_t",
+            "br_game_cnt","br_game_list_sb_bg","br_game_list_sb",
+        }) do hide(id) end
+        for i=1,6 do hide("br_gsf_"..i); hide("br_gsf_t"..i) end
+        for i=1,30 do hide("br_gi_"..i); hide("br_gt_"..i) end
+        hide("br_game_load"); hide("br_game_load_t")
+
+        -- Left panel: tools
+        local lw=SIDEBAR_W; local rx=cx+lw+PAD; local rw=w-PAD*2-lw-PAD
+        Box("br_lbg",cx,panelY,lw,panelH,T.surface,2,CR)
+        Outline("br_lbg_o",cx,panelY,lw,panelH,T.border,3,CR)
+        Txt("br_lhdr",cx+8,panelY+6,"TOOLS",T.sub,11,4)
+        Ln("br_lhl",cx,panelY+22,cx+lw,panelY+22,nil,1,3)
+
+        local toolListY=panelY+26; local scanBtnY=panelY+panelH-32
+        local toolVis=math.floor((scanBtnY-toolListY-4)/22)
+        for i=1,toolVis do
+            local tool=S.tools[i]
+            if not tool then hide("br_ti_"..i); hide("br_tt_"..i) break end
+            local iy=toolListY+(i-1)*22; local sel=S.toolSel==i
+            Box("br_ti_"..i,cx+1,iy,lw-2,21,sel and T.accent or (inB(cx+1,iy,lw-2,21) and T.panel or T.surface),3)
+            Txt("br_tt_"..i,cx+8,iy+4,tool.label,sel and T.text or T.sub,12,4)
+        end
+        for i=math.max(1,#S.tools+1),toolVis+2 do hide("br_ti_"..i); hide("br_tt_"..i) end
+
+        Box("br_scan",cx,scanBtnY,lw,28,inB(cx,scanBtnY,lw,28) and T.accentHi or T.accent,3,CR)
+        Txt("br_scan_t",cx+lw/2,scanBtnY+14,"Scan Inventory",T.text,13,4,true)
+
+        -- Pinned scripts below
+        if #S.pinnedScripts>0 then
+            local pinY=scanBtnY+32
+            Txt("br_pin_hdr",cx+4,pinY,"📌 PINNED",T.warn,10,4)
+            for i=1,math.min(#S.pinnedScripts,4) do
+                local p=S.pinnedScripts[i]; local piy2=pinY+14+(i-1)*18
+                local phov=inB(cx,piy2,lw,17)
+                Box("br_pin_"..i,cx,piy2,lw,17,phov and T.panel or T.surface,3)
+                local plbl=p.name; if tw(plbl,10)>lw-8 then plbl=plbl:sub(1,22).."…" end
+                Txt("br_pin_t"..i,cx+4,piy2+3,plbl,T.sub,10,4)
+            end
+            for i=#S.pinnedScripts+1,5 do hide("br_pin_"..i); hide("br_pin_t"..i) end
+        else
+            for i=1,5 do hide("br_pin_"..i); hide("br_pin_t"..i) end
+            hide("br_pin_hdr")
+        end
+
+        -- Right panel: nav explorer
+        Box("br_rbg",rx,panelY,rw,panelH,T.surface,2,CR)
+        Outline("br_rbg_o",rx,panelY,rw,panelH,T.border,3,CR)
+
+        -- Header: back button + breadcrumb
+        local canBack=#S.navStack>1
+        Box("br_back",rx+2,panelY+3,18,18,canBack and T.panel2 or T.surface,3,CR)
+        Txt("br_back_t",rx+11,panelY+12,"<",canBack and T.text or Color3.fromRGB(40,40,55),13,4,true)
+        local crumb=""
+        for i,v in ipairs(S.navStack) do if i>1 then crumb=crumb.." › " end; crumb=crumb..v.name end
+        if crumb=="" then crumb="Select a tool to explore" end
+        if tw(crumb,11)>rw-36 then crumb="…"..crumb:sub(-38) end
+        Txt("br_rhdr",rx+24,panelY+6,crumb,#S.navStack>0 and T.text or T.sub,11,4)
+        Ln("br_rhl",rx,panelY+24,rx+rw,panelY+24,nil,1,3)
+
+        -- Nav items list
+        local slY=panelY+28; local loadBtnY=panelY+panelH-32
+        local sVis=math.floor((loadBtnY-slY-4)/22)
+        local navItems=S.navItems or {}
+        local maxNavScroll=math.max(0,#navItems-sVis)
+        S.navScroll=math.max(0,math.min(S.navScroll,maxNavScroll))
+
+        for i=1,sVis do
+            local sc=navItems[i+S.navScroll]
+            if not sc then hide("br_si_"..i); hide("br_st_"..i); hide("br_si_pin_"..i) break end
+            local iy=slY+(i-1)*22
+            local absIdx=i+S.navScroll
+            local sel=S.navSel==absIdx
+            local hov=inB(rx+1,iy,rw-10,21)
+            Box("br_si_"..i,rx+1,iy,rw-10,21,sel and T.accent or (hov and T.panel or T.surface),3)
+            -- pin indicator
+            local isPinned=sc.inst and (function()
+                for _,p in ipairs(S.pinnedScripts) do if p.path==sc.inst:GetFullName() then return true end end
+                return false
+            end)()
+            if isPinned then Txt("br_si_pin_"..i,rx+rw-14,iy+4,"📌",T.warn,9,4)
+            else hide("br_si_pin_"..i) end
+            local lbl=(sc.icon or "")..sc.name.." ["..sc.class.."]"..(sc.currentVal or "")
+            if sc.hasChildren then lbl=lbl.." ›" end
+            if tw(lbl,12)>rw-24 then lbl=lbl:sub(1,56).."…" end
+            local txtCol=sel and T.text or (sc.isScript and T.sub or sc.isValue and T.hintNum or sc.isContainer and T.sub or T.textDim)
+            Txt("br_st_"..i,rx+8,iy+4,lbl,txtCol,12,4)
+        end
+        for i=math.min(#navItems-S.navScroll,sVis)+1,sVis+2 do
+            hide("br_si_"..i); hide("br_st_"..i); hide("br_si_pin_"..i)
+        end
+
+        -- Scrollbar for nav items
+        if #navItems>sVis then
+            local sbH=math.floor(sVis/#navItems*(loadBtnY-slY))
+            local sbY=slY+math.floor(S.navScroll/math.max(1,#navItems-sVis)*(loadBtnY-slY-sbH))
+            Box("br_nav_sb_bg",rx+rw-12,slY,12,loadBtnY-slY,T.surface,3)
+            Box("br_nav_sb",rx+rw-12,sbY,12,math.max(20,sbH),T.borderHi,4,4)
+        else hide("br_nav_sb_bg"); hide("br_nav_sb") end
+
+        -- Load button
+        local selEntry=navItems[S.navSel]
+        local loadLbl
+        if selEntry then
+            if selEntry.isScript then loadLbl="Decompile & Open in Editor"
+            elseif selEntry.isValue then loadLbl="Edit Value"
+            elseif selEntry.isContainer and selEntry.hasChildren then loadLbl="Open Folder →"
+            else loadLbl="Browse" end
+        else loadLbl=#navItems>0 and "Select an item" or "Scan a tool first" end
+        local pinBtnW=selEntry and 38 or 0
+        local loadW=rw-pinBtnW-(pinBtnW>0 and 2 or 0)
+        Box("br_load",rx,loadBtnY,loadW,28,
+            (selEntry and inB(rx,loadBtnY,loadW,28)) and T.accentHi or (selEntry and T.accent or T.border),3,CR)
+        Txt("br_load_t",rx+loadW/2,loadBtnY+14,loadLbl,T.text,12,4,true)
+        if pinBtnW>0 and selEntry and selEntry.inst then
+            local isPinned2=false
+            for _,p in ipairs(S.pinnedScripts) do if p.path==selEntry.inst:GetFullName() then isPinned2=true end end
+            Box("br_pin_btn",rx+loadW+2,loadBtnY,pinBtnW,28,isPinned2 and T.warn or T.panel2,3,CR)
+            Txt("br_pin_t_btn",rx+loadW+2+pinBtnW/2,loadBtnY+14,isPinned2 and "📌" or "Pin",isPinned2 and T.bg or T.sub,11,4,true)
+        else hide("br_pin_btn"); hide("br_pin_t_btn") end
+
+        -- Hide game browser elements that might linger
+        hide("br_game_load"); hide("br_game_load_t")
+
+    -- ====================================================
+    -- GAME BROWSER
+    -- ====================================================
+    else
+        -- Hide all tool browser elements
+        for i=1,30 do hide("br_ti_"..i); hide("br_tt_"..i); hide("br_si_"..i); hide("br_st_"..i); hide("br_si_pin_"..i) end
+        for i=1,5 do hide("br_pin_"..i); hide("br_pin_t"..i) end
+        hide("br_lbg"); hide("br_lbg_o"); hide("br_lhdr"); hide("br_lhl")
+        hide("br_scan"); hide("br_scan_t"); hide("br_pin_hdr")
+        hide("br_rbg"); hide("br_rbg_o"); hide("br_rhdr"); hide("br_rhl")
+        hide("br_back"); hide("br_back_t")
+        hide("br_load"); hide("br_load_t"); hide("br_pin_btn"); hide("br_pin_t_btn")
+        hide("br_nav_sb_bg"); hide("br_nav_sb")
+        hide("br_f_sc"); hide("br_f_sct"); hide("br_f_va"); hide("br_f_vat"); hide("br_f_al"); hide("br_f_alt")
+        hide("br_gc_btn"); hide("br_gc_btn_t")
+        hide("br_srch_btn"); hide("br_srch_btn_t")
+
+        local rw=w-PAD*2
+        -- Search input row
+        local inputY=panelY+4; local inputH=26
+        local gcBtnW=36; local goBtnW=32
+        local inputW=rw-gcBtnW-goBtnW-16
+        Box("br_game_input",cx,inputY,inputW,inputH,T.panel,3,CR)
+        Outline("br_game_input_o",cx,inputY,inputW,inputH,S.scriptSearchFocused and T.accent or T.border,4,CR)
+        local sd=S.scriptSearch..(S.scriptSearchFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
+        if sd=="" and not S.scriptSearchFocused then
+            Txt("br_game_input_t",cx+8,inputY+7,"Search all game instances by name…",T.sub,11,4)
+        else Txt("br_game_input_t",cx+8,inputY+7,sd,T.text,11,4) end
+        -- Go button
+        local goX=cx+inputW+4
+        Box("br_game_go",goX,inputY,goBtnW,inputH,inB(goX,inputY,goBtnW,inputH) and T.accentHi or T.accent,3,CR)
+        Txt("br_game_go_t",goX+goBtnW/2,inputY+13,"Go",T.text,11,4,true)
+        -- GC button
+        local gcX=goX+goBtnW+4
+        Box("br_game_gc",gcX,inputY,gcBtnW,inputH,S.gcBrowseMode and T.accentDim or T.panel2,3,CR)
+        Txt("br_game_gc_t",gcX+gcBtnW/2,inputY+13,"GC",S.gcBrowseMode and T.accentHi or T.sub,11,4,true)
+
+        -- Filter pills
+        local filterY=inputY+inputH+4
+        local filters={"All","Scripts","Values","Parts","Folders","Humanoid"}
+        local filterKeys={"all","scripts","values","parts","folders","humanoid"}
+        local fW=math.floor(rw/#filters)-1
+        for fi,fn in ipairs(filters) do
+            local fk=filterKeys[fi]; local fx=cx+(fi-1)*(fW+1)
+            local active=S.explorerFilter==fk and not S.gcBrowseMode
+            Box("br_gsf_"..fi,fx,filterY,fW,18,active and T.accent or T.panel2,3,2)
+            Txt("br_gsf_t"..fi,fx+fW/2,filterY+9,fn,active and T.text or T.sub,9,4,true)
+        end
+
+        -- Result list
+        local slY=filterY+22
+        local loadBtnY2=panelY+panelH-32
+        local sVis=math.floor((loadBtnY2-slY-4)/22)
+        local displayItems = S.gcBrowseMode and S.gcBrowseResults or S.scriptSearchResults
+        local listScroll=S.gcBrowseMode and S.gcBrowseScroll or S.scriptSearchScroll
+        local maxScroll=math.max(0,#displayItems-sVis)
+        if S.gcBrowseMode then S.gcBrowseScroll=math.max(0,math.min(S.gcBrowseScroll,maxScroll))
+        else S.scriptSearchScroll=math.max(0,math.min(S.scriptSearchScroll,maxScroll)) end
+        listScroll=S.gcBrowseMode and S.gcBrowseScroll or S.scriptSearchScroll
+
+        -- Status / count
+        local rc=#displayItems
+        if S.gcBrowseMode then
+            local selCount=0; for _ in pairs(S.gcBulkSel) do selCount=selCount+1 end
+            local gcStatusTxt=selCount>0 and (selCount.." selected") or (S.gcBrowseStatus~="" and S.gcBrowseStatus or (rc>0 and rc.." GC entries" or "Click GC → Scan GC"))
+            Txt("br_game_cnt",cx,slY-16,gcStatusTxt,selCount>0 and T.warn or T.sub,10,4)
+            -- GC controls row
+            local fX2=cx; local fW2=52
+            Box("br_gc_fc",fX2,filterY,fW2,18,S.gcBrowseFilter=="config" and T.accent or T.panel2,3,2)
+            Txt("br_gc_fct",fX2+fW2/2,filterY+9,"Config",S.gcBrowseFilter=="config" and T.text or T.sub,9,4,true)
+            Box("br_gc_fa",fX2+fW2+2,filterY,fW2,18,S.gcBrowseFilter=="all" and T.accent or T.panel2,3,2)
+            Txt("br_gc_fat",fX2+fW2*1.5+2,filterY+9,"All",S.gcBrowseFilter=="all" and T.text or T.sub,9,4,true)
+            local scanX=fX2+fW2*2+8
+            Box("br_gc_scan",scanX,filterY,60,18,inB(scanX,filterY,60,18) and T.accentHi or T.accent,3,CR)
+            Txt("br_gc_scant",scanX+30,filterY+9,"Scan GC",T.text,9,4,true)
+            for fi=1,6 do hide("br_gsf_"..fi); hide("br_gsf_t"..fi) end
+        else
+            Txt("br_game_cnt",cx,slY-16,rc>0 and rc.." results" or (S.scriptSearch~="" and "No results" or ""),T.sub,10,4)
+            hide("br_gc_fc"); hide("br_gc_fct"); hide("br_gc_fa"); hide("br_gc_fat")
+            hide("br_gc_scan"); hide("br_gc_scant")
+            -- bulk setter for GC not shown
+            for _,id in ipairs({"br_gc_bv","br_gc_bvo","br_gc_bvt","br_gc_bvb","br_gc_bvbt"}) do hide(id) end
+        end
+
+        for i=1,sVis do
+            local sc=displayItems[i+listScroll]
+            if not sc then hide("br_gi_"..i); hide("br_gt_"..i) break end
+            local iy=slY+(i-1)*22
+            local absIdx=i+listScroll
+            local sel=S.scriptSel==absIdx
+            local bulkSel=S.gcBrowseMode and S.gcBulkSel[absIdx]
+            local hov=inB(cx,iy,rw-10,21)
+            local bgCol=bulkSel and T.warn or sel and T.accent or (hov and T.panel or T.surface)
+            Box("br_gi_"..i,cx,iy,rw-10,21,bgCol,3)
+            local lbl
+            if S.gcBrowseMode then lbl=sc.key.." = "..sc.val
+            else lbl=sc.label or ((sc.icon or "")..sc.name.." ["..sc.class.."]"..(sc.currentVal or "")) end
+            if tw(lbl,12)>rw-18 then lbl=lbl:sub(1,60).."…" end
+            local txtCol
+            if S.gcBrowseMode and sc.vtype then
+                txtCol=(bulkSel or sel) and T.bg or (sc.vtype=="number" and T.hintNum or sc.vtype=="boolean" and T.hintBool or T.sub)
+            else txtCol=sel and T.text or T.sub end
+            Txt("br_gt_"..i,cx+6,iy+4,lbl,txtCol,12,4)
+        end
+        for i=math.min(#displayItems-listScroll,sVis)+1,sVis+2 do hide("br_gi_"..i); hide("br_gt_"..i) end
+
+        -- Scrollbar
+        if #displayItems>sVis then
+            local sbH=math.floor(sVis/#displayItems*(loadBtnY2-slY))
+            local sbY=slY+math.floor(listScroll/math.max(1,#displayItems-sVis)*(loadBtnY2-slY-sbH))
+            Box("br_game_list_sb_bg",cx+rw-12,slY,12,loadBtnY2-slY,T.surface,3)
+            Box("br_game_list_sb",cx+rw-12,sbY,12,math.max(20,sbH),T.borderHi,4,4)
+        else hide("br_game_list_sb_bg"); hide("br_game_list_sb") end
+
+        -- Load button
+        local sel2=displayItems[S.scriptSel]
+        local loadLbl2
+        if S.gcBrowseMode then loadLbl2=#displayItems>0 and "Insert into Editor" or "Scan GC first"
+        elseif sel2 then
+            if sel2.isScript then loadLbl2="Decompile & Open"
+            elseif sel2.isValue then loadLbl2="Edit Value"
+            else loadLbl2="Browse" end
+        else loadLbl2=#displayItems>0 and "Select a result" or "Search to find items" end
+        Box("br_game_load",cx,loadBtnY2,rw,28,(sel2 and inB(cx,loadBtnY2,rw,28)) and T.accentHi or (sel2 and T.accent or T.border),3,CR)
+        Txt("br_game_load_t",cx+rw/2,loadBtnY2+14,loadLbl2,T.text,12,4,true)
+
+        -- GC bulk setter
+        if S.gcBrowseMode then
+            local selCount=0; for _ in pairs(S.gcBulkSel) do selCount=selCount+1 end
+            if selCount>0 then
+                local bvX=cx; local bvW=rw-66
+                Box("br_gc_bv",bvX,loadBtnY2-26,bvW,20,T.panel2,3,CR)
+                Outline("br_gc_bvo",bvX,loadBtnY2-26,bvW,20,S.gcBulkFocused and T.accent or T.border,4,CR)
+                local bvd=S.gcBulkValue..(S.gcBulkFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
+                if bvd=="" and not S.gcBulkFocused then Txt("br_gc_bvt",bvX+5,loadBtnY2-22,"Set all selected…",T.sub,10,4)
+                else Txt("br_gc_bvt",bvX+5,loadBtnY2-22,bvd,T.text,10,4) end
+                Box("br_gc_bvb",bvX+bvW+4,loadBtnY2-26,60,20,inB(bvX+bvW+4,loadBtnY2-26,60,20) and T.accentHi or T.accent,3,CR)
+                Txt("br_gc_bvbt",bvX+bvW+34,loadBtnY2-16,"Set All",T.text,10,4,true)
+            else
+                for _,id in ipairs({"br_gc_bv","br_gc_bvo","br_gc_bvt","br_gc_bvb","br_gc_bvbt"}) do hide(id) end
+            end
+        end
     end
-    for i=#S.scripts+1,sVis+2 do hide("br_si_"..i); hide("br_st_"..i) end
 
-    local hasScript=#S.scripts>0
-    Box("br_load",rx,loadBtnY,rw,28,
-        (hasScript and inB(rx,loadBtnY,rw,28)) and T.accentHi or (hasScript and T.accent or T.border),3)
-    Txt("br_load_t",rx+rw/2,loadBtnY+14,
-        hasScript and "Decompile & Open in Editor" or "Select a tool then a script",T.text,12,4,true)
-
-    -- status bar — own row below panels, always visible
-    local stY=cy+lh+4
-    Box("br_stbg",cx,stY,w-PAD*2,22,T.panel2,2)
-    Outline("br_sto",cx,stY,w-PAD*2,22,T.border,3)
-    -- colored dot indicator
+    -- Status bar (always shown)
+    local stY=y+h-PAD-16
     if S.browserStatusColor then
         Box("br_stdot",cx+8,stY+7,8,8,S.browserStatusColor,3)
         Txt("br_status",cx+22,stY+5,S.browserStatus,S.browserStatusColor,12,3)
@@ -496,11 +1204,36 @@ end
 
 local function renderEditor()
     local x,y,w,h=S.x,S.y,S.w,S.h
-    local edY,pathBarY,searchBarY,liBarY,codeY,codeH,codeW,codeStartX=edLayout()
+    local edY,pathBarY,searchBarY,liBarY,codeY,codeH,codeW,codeStartX,tabBarY=edLayout()
     local sbX=x+w-SB_W-2
 
-    -- path bar
-    Box("ed_pathbar",x,pathBarY,w,PATHBAR_H,T.panel,2)
+    -- ===== Tab bar =====
+    Box("ed_tabbg",x,tabBarY,w,TAB_BAR_H,T.panel2,2,CR)
+    Ln("ed_tabbl",x,tabBarY+TAB_BAR_H,x+w,tabBarY+TAB_BAR_H,nil,1,3)
+    local numTabs=math.max(1,#S.tabs)
+    local tabW=math.min(150,math.floor((w-28)/numTabs))
+    for i=1,numTabs do
+        local t=S.tabs[i]; local tx=x+(i-1)*tabW
+        local active=i==S.activeTab
+        Box("ed_tab_"..i,tx,tabBarY+2,tabW-1,TAB_BAR_H-4,active and T.panel or T.surface,3)
+        if active then Box("ed_tab_ul_"..i,tx,tabBarY+TAB_BAR_H-2,tabW-1,2,T.accent,4)
+        else hide("ed_tab_ul_"..i) end
+        local lbl=getTabLabel(t)
+        local maxLblW=tabW-22
+        if tw(lbl,11)>maxLblW then lbl=lbl:sub(1,math.max(1,math.floor(maxLblW/(11*0.535)))).."…" end
+        Txt("ed_tab_t_"..i,tx+6,tabBarY+7,lbl,active and T.text or T.sub,11,4)
+        Txt("ed_tab_x_"..i,tx+tabW-12,tabBarY+7,"×",active and T.textDim or Color3.fromRGB(45,45,60),11,4)
+    end
+    for i=numTabs+1,MAX_TABS+1 do
+        hide("ed_tab_"..i); hide("ed_tab_ul_"..i); hide("ed_tab_t_"..i); hide("ed_tab_x_"..i)
+    end
+    -- + new tab button
+    local plusX=x+numTabs*tabW
+    if numTabs<MAX_TABS then
+        Box("ed_tab_new",plusX,tabBarY+4,20,TAB_BAR_H-8,T.panel,3,CR)
+        Txt("ed_tab_new_t",plusX+10,tabBarY+7,"+",T.sub,12,4,true)
+    else hide("ed_tab_new"); hide("ed_tab_new_t") end
+    Box("ed_pathbar",x,pathBarY,w,PATHBAR_H,T.panel,2,CR)
     local pathDisp=S.currentPath=="" and "No file loaded — use Browser tab" or S.currentPath
     local maxPW=w-PAD*2-80
     if tw(pathDisp,11)>maxPW then
@@ -511,7 +1244,7 @@ local function renderEditor()
     -- reload button
     if S.currentInst then
         local rbW=64; local rbX=x+w-rbW-PAD
-        Box("ed_reload",rbX,pathBarY+3,rbW,16,inB(rbX,pathBarY+3,rbW,16) and T.accentHi or T.panel,3)
+        Box("ed_reload",rbX,pathBarY+3,rbW,16,inB(rbX,pathBarY+3,rbW,16,CR) and T.accentHi or T.panel,3)
         Txt("ed_reload_t",rbX+rbW/2,pathBarY+11,"↺ Reload",T.sub,10,4,true)
     else hide("ed_reload"); hide("ed_reload_t") end
 
@@ -522,7 +1255,7 @@ local function renderEditor()
         Txt("ed_srch_lbl",x+PAD,searchBarY+5,"Find:",T.sub,11,4)
         local qx=x+PAD+40; local qw=220
         Box("ed_srch_box",qx,searchBarY+3,qw,16,T.panel,3)
-        Outline("ed_srch_box_o",qx,searchBarY+3,qw,16,S.searchFocused and T.accent or T.border,4)
+        Outline("ed_srch_box_o",qx,searchBarY+3,qw,16,S.searchFocused and T.accent or T.border,4,CR)
         local qd=S.searchQuery..(S.searchFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
         Txt("ed_srch_q",qx+4,searchBarY+5,qd,T.text,11,4)
         local matchStr=#S.searchMatches>0 and (S.searchMatchIdx.."/"..#S.searchMatches.." matches") or "no matches"
@@ -531,6 +1264,20 @@ local function renderEditor()
     else
         for _,id in ipairs({"ed_srch_bg","ed_srch_bl","ed_srch_lbl","ed_srch_box",
             "ed_srch_box_o","ed_srch_q","ed_srch_mc","ed_srch_esc"}) do hide(id) end
+    end
+
+    -- line jump overlay (Ctrl+G)
+    if S.lineJumpOpen then
+        local ljW=200; local ljX=x+w/2-ljW/2; local ljY=codeY+4
+        Box("ed_lj_bg",ljX,ljY,ljW,28,T.panel2,10,CR)
+        Outline("ed_lj_o",ljX,ljY,ljW,28,T.accent,11,CR)
+        Txt("ed_lj_lbl",ljX+8,ljY+8,"Go to line:",T.sub,11,11)
+        local ljInputX=ljX+74; local ljInputW=ljW-78
+        Box("ed_lj_inp",ljInputX,ljY+4,ljInputW,20,T.bg,11,2)
+        local ljd=S.lineJumpInput..(math.floor(tick()*2)%2==0 and "|" or "")
+        Txt("ed_lj_t",ljInputX+4,ljY+8,ljd,T.text,12,12)
+    else
+        for _,id in ipairs({"ed_lj_bg","ed_lj_o","ed_lj_lbl","ed_lj_inp","ed_lj_t"}) do hide(id) end
     end
 
     -- code background
@@ -582,8 +1329,15 @@ local function renderEditor()
         else hide("ed_dif_"..i) end
 
         if li<=totalLines then
-            Txt("ed_ln_"..i,x+LN_W-4,lineY+2,tostring(li),
-                li==S.cursorLine and T.accent or Color3.fromRGB(70,70,90),11,3,true)
+            TxtCode("ed_ln_"..i,x+LN_W-4,lineY+2,tostring(li),
+                li==S.cursorLine and T.accent or Color3.fromRGB(70,70,90),11,3)
+            -- value type hint dot
+            local hint=getLineHint(S.lines[li])
+            if hint then
+                local hc = hint=="num" and T.hintNum or hint=="bool" and T.hintBool
+                    or hint=="vec" and T.hintVec or T.hintBad
+                Box("ed_hint_"..i,x+2,lineY+6,4,4,hc,4)
+            else hide("ed_hint_"..i) end
 
             -- horizontal clip: slice string to visible char range
             local lineStr=S.lines[li]
@@ -597,11 +1351,11 @@ local function renderEditor()
                 local spW=tw(sp[1],13)
                 if ox+spW>codeStartX+codeW then
                     local avail=math.floor((codeStartX+codeW-ox)/CHAR_W)
-                    if avail>0 then Txt("ed_sp_"..i.."_"..si,ox,lineY+2,sp[1]:sub(1,avail),sp[2],13,4) end
+                    if avail>0 then TxtCode("ed_sp_"..i.."_"..si,ox,lineY+2,sp[1]:sub(1,avail),sp[2],13,4) end
                     hidePrefix("ed_sp_"..i.."_"..(si+1))
                     break
                 end
-                Txt("ed_sp_"..i.."_"..si,ox,lineY+2,sp[1],sp[2],13,4)
+                TxtCode("ed_sp_"..i.."_"..si,ox,lineY+2,sp[1],sp[2],13,4)
                 ox=ox+spW
             end
         else
@@ -625,7 +1379,7 @@ local function renderEditor()
     -- clean up extra rows
     for i=visLines+1,visLines+6 do
         hide("ed_curhl_"..i); hide("ed_ln_"..i); hide("ed_dif_"..i); hide("ed_shi_"..i)
-        hidePrefix("ed_sp_"..i.."_")
+        hide("ed_hint_"..i); hidePrefix("ed_sp_"..i.."_")
     end
 
     -- vertical scrollbar
@@ -647,7 +1401,7 @@ local function renderEditor()
 
     -- bottom bar
     local bbY=y+h-BBH
-    Box("ed_bb",x,bbY,w,BBH,T.panel,2)
+    Box("ed_bb",x,bbY,w,BBH,T.panel,2,CR)
     Ln("ed_bbl",x,bbY,x+w,bbY,nil,1,3)
     Txt("ed_li",x+PAD,bbY+10,"Ln "..S.cursorLine.." / "..totalLines.."   Col "..S.cursorChar,T.sub,11,3)
     Txt("ed_mode",x+210,bbY+10,S.focused and "  EDITING" or "  READ ONLY",S.focused and T.success or T.sub,11,3)
@@ -659,10 +1413,82 @@ local function renderEditor()
     if S.editorStatus~="" then
         Txt("ed_st",x+420,bbY+10,S.editorStatus,S.editorStatusColor or T.sub,11,3)
     else hide("ed_st") end
+    -- Revert button (only when originalLines differ from current)
+    local hasChanges = S.originalLines and #S.originalLines>0
+    local rvW=60; local rvX=x+w-150-PAD-rvW-4
+    if hasChanges and not S.editValueInst then
+        Box("ed_rv",rvX,bbY+6,rvW,24,inB(rvX,bbY+6,rvW,24) and Color3.fromRGB(120,40,40) or Color3.fromRGB(80,25,25),3,CR)
+        Txt("ed_rv_t",rvX+rvW/2,bbY+18,"Revert",T.text,11,4,true)
+    else hide("ed_rv"); hide("ed_rv_t") end
     local abW=150; local abX=x+w-abW-PAD; local abY=bbY+6
-    Box("ed_ap",abX,abY,abW,24,inB(abX,abY,abW,24) and T.accentHi or T.accent,3)
-    Txt("ed_ap_t",abX+abW/2,abY+12,"Apply via setgc",T.text,12,4,true)
-end
+    if S.editValueInst then
+        Box("ed_ap",abX,abY,abW,24,inB(abX,abY,abW,24,CR) and T.accentHi or T.accent,3,CR)
+        Txt("ed_ap_t",abX+abW/2,abY+12,"Set Value",T.text,12,4,true)
+    else
+        Box("ed_ap",abX,abY,abW,24,inB(abX,abY,abW,24,CR) and T.accentHi or T.accent,3,CR)
+        Txt("ed_ap_t",abX+abW/2,abY+12,"Apply via setgc",T.text,12,4,true)
+    end
+
+    -- Value diff panel (shown after apply)
+    if S.diffPanelOpen and #S.diffResults>0 then
+        local dpW=320; local dpX=x+w-dpW-PAD; local dpY=bbY-math.min(#S.diffResults,8)*18-12
+        Box("ed_diff_bg",dpX,dpY,dpW,math.min(#S.diffResults,8)*18+28,T.panel2,20,CR)
+        Outline("ed_diff_o",dpX,dpY,dpW,math.min(#S.diffResults,8)*18+28,T.border,21,CR)
+        Txt("ed_diff_hdr",dpX+8,dpY+6,"VALUE DIFF (click to close)",T.sub,10,21)
+        for i=1,math.min(#S.diffResults,8) do
+            local r=S.diffResults[i]; local dy=dpY+20+(i-1)*18
+            local col=r.match and T.hintOk or T.err
+            local sym=r.match and "✓" or "✗"
+            Txt("ed_diff_"..i,dpX+8,dy,sym.." "..r.key.." = "..r.requested..(r.match and "" or " (got "..r.actual..")"),col,10,21)
+        end
+        for i=#S.diffResults+1,9 do hide("ed_diff_"..i) end
+    else
+        for _,id in ipairs({"ed_diff_bg","ed_diff_o","ed_diff_hdr"}) do hide(id) end
+        for i=1,9 do hide("ed_diff_"..i) end
+    end
+
+    -- Cross-file search overlay (Ctrl+Shift+F)
+    if S.crossSearchOpen then
+        local csW=w-60; local csH=math.min(#S.crossSearchResults*16+52,200)
+        local csX=x+30; local csY=codeY+20
+        Box("ed_cs_bg",csX,csY,csW,csH,T.panel2,22,CR)
+        Outline("ed_cs_o",csX,csY,csW,csH,T.accent,23,CR)
+        Txt("ed_cs_lbl",csX+8,csY+6,"CROSS-TAB SEARCH",T.accent,10,23)
+        -- input
+        local csiX=csX+130; local csiW=csW-200
+        Box("ed_cs_inp",csiX,csY+3,csiW,16,T.bg,23,2)
+        Outline("ed_cs_inp_o",csiX,csY+3,csiW,16,S.crossSearchFocused and T.accent or T.border,24,2)
+        local csd=S.crossSearchQuery..(S.crossSearchFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
+        Txt("ed_cs_q",csiX+4,csY+5,csd=="" and not S.crossSearchFocused and "search all tabs…" or csd,csd=="" and T.sub or T.text,10,24)
+        -- search button
+        local csbX=csiX+csiW+4
+        Box("ed_cs_btn",csbX,csY+3,52,16,inB(csbX,csY+3,52,16) and T.accentHi or T.accent,23,CR)
+        Txt("ed_cs_btn_t",csbX+26,csY+11,"Search",T.text,10,24,true)
+        Txt("ed_cs_esc",csX+csW-46,csY+6,"ESC close",T.sub,9,23)
+        -- results
+        if #S.crossSearchResults>0 then
+            for i=1,math.min(#S.crossSearchResults,8) do
+                local r=S.crossSearchResults[i]; local ry2=csY+24+(i-1)*16
+                local hov=inB(csX+4,ry2,csW-8,15)
+                Box("ed_cs_r_"..i,csX+4,ry2,csW-8,15,hov and T.panel or T.surface,23)
+                local lbl="["..r.tabLabel..":"..r.lineIdx.."] "..r.line:match("^%s*(.-)%s*$")
+                if #lbl>72 then lbl=lbl:sub(1,72).."…" end
+                Txt("ed_cs_rt_"..i,csX+8,ry2+2,lbl,T.sub,10,24)
+            end
+            for i=#S.crossSearchResults+1,9 do hide("ed_cs_r_"..i); hide("ed_cs_rt_"..i) end
+        elseif S.crossSearchQuery~="" then
+            Txt("ed_cs_none",csX+8,csY+28,"No matches across "..#S.tabs.." tabs",T.sub,10,23)
+            for i=1,9 do hide("ed_cs_r_"..i); hide("ed_cs_rt_"..i) end
+        else
+            for i=1,9 do hide("ed_cs_r_"..i); hide("ed_cs_rt_"..i) end
+            hide("ed_cs_none")
+        end
+    else
+        for _,id in ipairs({"ed_cs_bg","ed_cs_o","ed_cs_lbl","ed_cs_inp","ed_cs_inp_o",
+            "ed_cs_q","ed_cs_btn","ed_cs_btn_t","ed_cs_esc","ed_cs_none"}) do hide(id) end
+        for i=1,9 do hide("ed_cs_r_"..i); hide("ed_cs_rt_"..i) end
+    end
+end  -- renderEditor
 
 local function renderLineBar()
     local x,y,w,h=S.x,S.y,S.w,S.h
@@ -706,11 +1532,15 @@ local function renderSettings()
     local ch=h-HEADER_H-PAD*2
 
     -- panel background
-    Box("st_bg",cx,cy,cw,ch,T.surface,2)
-    Outline("st_bg_o",cx,cy,cw,ch,T.border,3)
+    Box("st_bg",cx,cy,cw,ch,T.surface,2,CR)
+    Outline("st_bg_o",cx,cy,cw,ch,T.border,3,CR)
+
+    -- scrollbar track
+    local sbW=12; local sbX=cx+cw-sbW-2  -- scrollbar on right edge
+    Box("st_sb_track",sbX,cy+4,sbW,ch-8,T.panel2,3,6)
 
     local lx=cx+14  -- left content x
-    local ry=cy     -- rolling Y cursor
+    local ry=cy-S.settingsScroll  -- rolling Y cursor with scroll offset
 
     -- ===== Section: Hotkey =====
     ry=ry+10
@@ -722,8 +1552,8 @@ local function renderSettings()
 
     local btnW=140; local btnH=26; local btnY=ry
     local listening=S.listeningForKey
-    Box("st_keybtn",lx,btnY,btnW,btnH,listening and T.accentDim or T.panel2,3)
-    Outline("st_keybtn_o",lx,btnY,btnW,btnH,listening and T.accent or T.border,3)
+    Box("st_keybtn",lx,btnY,btnW,btnH,listening and T.accentDim or T.panel2,3,CR)
+    Outline("st_keybtn_o",lx,btnY,btnW,btnH,listening and T.accent or T.border,3,CR)
     Txt("st_keytxt",lx+btnW/2,btnY+btnH/2,
         listening and "Press any key…" or S.menuKeyName,
         listening and T.accentHi or T.text,12,4,true)
@@ -758,8 +1588,8 @@ local function renderSettings()
 
     local aaOn=S.autoApply
     local aaBtnW=100; local aaBtnH=26
-    Box("st_aatog",lx,ry,aaBtnW,aaBtnH,aaOn and T.success or T.panel2,3)
-    Outline("st_aatog_o",lx,ry,aaBtnW,aaBtnH,aaOn and T.success or T.border,3)
+    Box("st_aatog",lx,ry,aaBtnW,aaBtnH,aaOn and T.success or T.panel2,3,CR)
+    Outline("st_aatog_o",lx,ry,aaBtnW,aaBtnH,aaOn and T.success or T.border,3,CR)
     Txt("st_aatog_t",lx+aaBtnW/2,ry+aaBtnH/2,
         aaOn and "● ON" or "○ OFF",
         aaOn and T.bg or T.textDim,12,4,true)
@@ -768,7 +1598,7 @@ local function renderSettings()
     Txt("st_aaint_l",lx+aaBtnW+12,ry+7,"Every",T.sub,11,4)
     local aiX=lx+aaBtnW+58; local aiW=48
     Box("st_aaint",aiX,ry+2,aiW,22,T.panel2,3)
-    Outline("st_aaint_o",aiX,ry+2,aiW,22,S.autoApplyFocused and T.accent or T.border,4)
+    Outline("st_aaint_o",aiX,ry+2,aiW,22,S.autoApplyFocused and T.accent or T.border,4,CR)
     local aiDisp=S.autoApplyIntervalInput..(S.autoApplyFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
     Txt("st_aaint_t",aiX+4,ry+6,aiDisp,T.text,11,4)
     Txt("st_aaint_s",aiX+aiW+6,ry+7,"sec",T.sub,11,4)
@@ -783,8 +1613,23 @@ local function renderSettings()
     ry=ry+22
 
     -- divider
-    Box("st_div3",cx+8,ry,cw-16,1,T.sep,3)
-    ry=ry+10
+    Box("st_div3",cx+8,ry,cw-16,1,T.sep,3); ry=ry+10
+
+    -- ===== Section: Theme =====
+    Box("st_s_theme_tag",lx,ry,cw-28,18,T.tag,3)
+    Txt("st_s_theme_lbl",lx+8,ry+3,"THEME",T.accent,10,4)
+    ry=ry+26
+    local thW=math.floor((cw-28-4*(#THEMES-1))/#THEMES)
+    for i,th in ipairs(THEMES) do
+        local tx=lx+(i-1)*(thW+4)
+        local active=S.themeIdx==i
+        Box("st_th_"..i,tx,ry,thW,22,active and T.accent or T.panel2,3,CR)
+        Txt("st_th_t"..i,tx+thW/2,ry+11,th.name,active and T.text or T.sub,10,4,true)
+    end
+    ry=ry+30
+
+    -- divider
+    Box("st_div4b",cx+8,ry,cw-16,1,T.sep,3); ry=ry+10
 
     -- ===== Section: Shortcuts =====
     Box("st_s4_tag",lx,ry,cw-28,18,T.tag,3)
@@ -803,6 +1648,66 @@ local function renderSettings()
         Txt("st_sc_vt_"..idx,lx+70,ry+2,sc[2],T.sub,11,4)
         ry=ry+18
     end
+    ry=ry+4
+
+    -- ===== Presets section =====
+    Box("st_div4",cx+8,ry,cw-16,1,T.sep,3); ry=ry+10
+    Box("st_s5_tag",lx,ry,cw-28,18,T.tag,3)
+    Txt("st_s5_lbl",lx+8,ry+3,"PRESETS",T.accent,10,4)
+    ry=ry+24
+    Txt("st_pre_sub",lx,ry,"Save editor content as a named preset. Apply to load into a new tab.",T.sub,11,4)
+    ry=ry+18
+
+    -- name input + save button
+    local piW=cw-28-70-8; local piX=lx
+    Box("st_pre_ni",piX,ry,piW,22,T.panel2,3)
+    Outline("st_pre_nio",piX,ry,piW,22,S.presetNameFocused and T.accent or T.border,3)
+    local pnd=S.presetNameInput..(S.presetNameFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
+    if pnd=="" and not S.presetNameFocused then
+        Txt("st_pre_nt",piX+6,ry+4,"Preset name…",T.sub,11,4)
+    else Txt("st_pre_nt",piX+6,ry+4,pnd,T.text,11,4) end
+    local savX=piX+piW+6
+    Box("st_pre_sav",savX,ry,64,22,inB(savX,ry,64,22) and T.accentHi or T.accent,3)
+    Txt("st_pre_savt",savX+32,ry+11,"Save",T.text,11,4,true)
+    ry=ry+30
+
+    -- preset list
+    local presets=S.presets
+    if #presets==0 then
+        Txt("st_pre_empty",lx,ry,"No presets saved yet.",T.sub,11,4); ry=ry+16
+    else
+        for i=1,math.min(#presets,6) do
+            local p=presets[i]; local sel=S.presetSel==i
+            Box("st_pre_"..i,lx,ry,cw-28,20,sel and T.accentDim or T.panel2,3)
+            Txt("st_pre_n"..i,lx+6,ry+3,p.name.." ("..#p.lines.." lines)",sel and T.text or T.sub,11,4)
+            -- apply + delete buttons
+            local apX=lx+cw-28-60; local delX=apX+32
+            Box("st_pre_ap"..i,apX,ry+2,28,16,inB(apX,ry+2,28,16) and T.accentHi or T.accent,3)
+            Txt("st_pre_apt"..i,apX+14,ry+10,"Apply",T.text,9,4,true)
+            Box("st_pre_del"..i,delX,ry+2,24,16,inB(delX,ry+2,24,16) and Color3.fromRGB(120,30,30) or T.panel2,3)
+            Txt("st_pre_delt"..i,delX+12,ry+10,"✕",T.sub,10,4,true)
+            ry=ry+22
+        end
+    end
+    -- clean up unused preset rows
+    for i=#presets+1,8 do
+        hide("st_pre_"..i); hide("st_pre_n"..i)
+        hide("st_pre_ap"..i); hide("st_pre_apt"..i)
+        hide("st_pre_del"..i); hide("st_pre_delt"..i)
+    end
+    -- scrollbar thumb (estimate total content height = ry - initial cy + 20)
+    local totalH=math.max(1,(ry+20)-(cy-S.settingsScroll))
+    local visH=ch
+    -- clamp settingsScroll to actual content
+    local maxScroll=math.max(0,totalH-visH)
+    S.settingsScroll=math.max(0,math.min(maxScroll,S.settingsScroll))
+    if totalH>visH then
+        local thumbH=math.max(24,math.floor(visH/totalH*visH))
+        local trackH=visH-8
+        local thumbY=cy+4+math.floor(S.settingsScroll/math.max(1,maxScroll)*(trackH-thumbH))
+        thumbY=math.max(cy+4,math.min(cy+4+trackH-thumbH,thumbY))  -- clamp within track
+        Box("st_sb_thumb",sbX,thumbY,sbW,thumbH,T.borderHi,4,4)
+    else hide("st_sb_thumb") end
 end
 
 -- ===== Input handler =====
@@ -836,13 +1741,29 @@ local function handleInput(dt)
 
     -- settings
     if S.tab=="settings" then
-        local cx=x+PAD; local lx=cx+14
-        -- Mirror renderSettings ry exactly
-        local ry=y+HEADER_H+PAD
-        ry=ry+10              -- section tag start
-        ry=ry+26              -- after tag
-        ry=ry+18              -- after subtitle
-        local btnY=ry         -- hotkey button Y (matches render's btnY=ry)
+        local cx=x+PAD; local lx=cx+14; local cw=w-PAD*2
+        local ch=h-HEADER_H-PAD*2
+        local sbW2=12; local sbX=cx+cw-sbW2-2  -- must match renderSettings exactly
+
+        -- settings scroll via wheel
+        if wheelDelta~=0 and inB(cx,y+HEADER_H+PAD,cw,ch) then
+            S.settingsScroll=math.max(0,S.settingsScroll+wheelDelta*12)
+            wheelDelta=0
+        end
+        -- settings scrollbar drag
+        if (held or click) and inB(sbX,y+HEADER_H+PAD+4,sbW2+4,ch-8) then
+            S.settingsScrollDrag=true
+        end
+        if not held then S.settingsScrollDrag=false end
+        if S.settingsScrollDrag then
+            local relY=math.max(0,math.min(1,(mouse.Y-(y+HEADER_H+PAD+4))/math.max(1,ch-8)))
+            S.settingsScroll=math.floor(relY*800)  -- renderSettings clamps to actual max
+        end
+
+        -- Mirror renderSettings ry exactly (account for scroll offset)
+        local ry=y+HEADER_H+PAD-S.settingsScroll
+        ry=ry+10; ry=ry+26; ry=ry+18
+        local btnY=ry
         if click and inB(lx,btnY,140,26) then S.listeningForKey=true end
         if S.listeningForKey then
             for name,id in pairs(KEY_IDS) do
@@ -898,6 +1819,68 @@ local function handleInput(dt)
                 end
             end
         end
+
+        -- presets: name input
+        -- theme clicks — mirror renderSettings ry exactly
+        -- base: ry = y+HEADER_H+PAD (=cy)
+        -- +10 (initial gap) +26 (hotkey tag) +18 (sub) +42 (btn+gap) +10 (div)
+        -- +26 (diff tag) +16 (diff1) +22 (diff2) +10 (div)
+        -- +26 (auto tag) +18 (auto sub) +32 (aabtn+gap) +22 (status) +10 (div)
+        -- +26 (theme tag) = theme buttons at:
+        local themeRy = y+HEADER_H+PAD - S.settingsScroll + 10+26+18+42+10+26+16+22+10+26+18+32+22+10+26
+        local thW2=math.floor((cw-28-4*(#THEMES-1))/#THEMES)
+        for i=1,#THEMES do
+            local ttx=lx+(i-1)*(thW2+4)
+            if click and inB(ttx,themeRy,thW2,22) then
+                S.themeIdx=i; applyTheme(i)
+            end
+        end
+
+        local piW2=cw-28-70-8; local piX2=lx
+        local ry2=y+HEADER_H+PAD
+        ry2=ry2+10+26+18+26+16+10+26+16+22+10+26+18+26+22+10+10+26+30+10+26+18+24+18+30
+        -- preset name input focus
+        if click and inB(piX2,ry2,piW2,22) then
+            S.presetNameFocused=true
+        elseif click and not inB(piX2+piW2+6,ry2,64,22) then
+            S.presetNameFocused=false
+        end
+        -- name input typing
+        if S.presetNameFocused then
+            local typeKeys={"a","b","c","d","e","f","g","h","i","j","k","l","m",
+                "n","o","p","q","r","s","t","u","v","w","x","y","z",
+                "0","1","2","3","4","5","6","7","8","9","space","minus","backspace","enter"}
+            for _,k in ipairs(typeKeys) do
+                if keyRepeating(k,dt) then
+                    if k=="backspace" then S.presetNameInput=S.presetNameInput:sub(1,-2)
+                    elseif k=="enter" then S.presetNameFocused=false
+                    else
+                        local c=charMap[k] or k
+                        if #c==1 then
+                            if isShift() then c=c:upper() end
+                            S.presetNameInput=S.presetNameInput..c
+                        end
+                    end
+                end
+            end
+        end
+        -- save preset button
+        if click and inB(piX2+piW2+6,ry2,64,22) and S.presetNameInput~="" then
+            savePreset(S.presetNameInput, S.lines)
+            S.presetNameInput=""; S.presetNameFocused=false
+        end
+        -- preset list: apply and delete
+        local listRy=ry2+30
+        for i=1,math.min(#S.presets,6) do
+            local apX=piX2+(cw-28)-60; local delX=apX+32
+            if click and inB(apX,listRy+2,28,16) then applyPreset(i) end
+            if click and inB(delX,listRy+2,24,16) then
+                table.remove(S.presets,i)
+                S.presetSel=math.min(S.presetSel,math.max(1,#S.presets))
+            end
+            if click and inB(piX2,listRy,cw-28,20) then S.presetSel=i end
+            listRy=listRy+22
+        end
         return
     end
 
@@ -905,115 +1888,334 @@ local function handleInput(dt)
     if S.tab=="browser" then
         local cy=y+HEADER_H+PAD
         local lh=h-HEADER_H-PAD*2-28
-        local scanBtnY=cy+lh-32
-        local rx=x+PAD+SIDEBAR_W+PAD; local rw=w-SIDEBAR_W-PAD*3
-        local piy=cy+28; local piw=rw-16-76; local lpx=rx+8+piw+6
-        local slY=cy+58; local loadBtnY=cy+lh-32
-        local toolListY=cy+26
-        local toolVis=math.floor((scanBtnY-toolListY-4)/22)
-        local sVis=math.floor((loadBtnY-slY-4)/22)
+        local cx=x+PAD; local cw_full=w-PAD*2
+        local subTab=S.browserSubTab
+        local subBarH=24
+        local panelY=cy+subBarH+2
+        local panelH=lh-subBarH-2
 
-        if click and inB(x+PAD,scanBtnY,SIDEBAR_W,28) then
-            S.tools=scanTools(); S.toolSel=1; S.scripts={}
-            if #S.tools==0 then
-                S.browserStatus="No tools found in backpack"; S.browserStatusColor=T.warn
-            else
-                S.scripts=getScripts(S.tools[1].inst)
-                local mem=S.toolMemory[S.tools[1].inst.Name]
-                S.scriptSel=math.min(mem or 1,math.max(1,#S.scripts))
-                S.browserStatus="Found "..#S.tools.." tool(s) — "..#S.scripts.." script(s)"
-                S.browserStatusColor=T.success
+        -- Sub-tab clicks
+        local stW=cw_full/2
+        if click and inB(cx,cy,stW,subBarH) then S.browserSubTab="tool" end
+        if click and inB(cx+stW,cy,stW,subBarH) then S.browserSubTab="game" end
+
+        if subTab=="tool" then
+            local lw=SIDEBAR_W; local rx=cx+lw+PAD; local rw=cw_full-lw-PAD
+            local toolListY=panelY+26; local scanBtnY=panelY+panelH-32
+            local toolVis=math.floor((scanBtnY-toolListY-4)/22)
+            local slY=panelY+28; local loadBtnY=panelY+panelH-32
+            local sVis=math.floor((loadBtnY-slY-4)/22)
+            local navItems=S.navItems or {}
+
+            -- wheel + scrollbar
+            if wheelDelta~=0 and inB(rx,slY,rw,loadBtnY-slY) then
+                S.navScroll=math.max(0,math.min(math.max(0,#navItems-sVis),S.navScroll+wheelDelta)); wheelDelta=0
             end
-        end
-
-        for i=1,toolVis do
-            if S.tools[i] and click and inB(x+PAD+1,toolListY+(i-1)*22,SIDEBAR_W-2,21) then
-                S.toolSel=i
-                S.scripts=getScripts(S.tools[i].inst)
-                local mem=S.toolMemory[S.tools[i].inst.Name]
-                S.scriptSel=math.min(mem or 1,math.max(1,#S.scripts))
-                S.browserStatus=S.tools[i].label.." — "..#S.scripts.." script(s)"
-                S.browserStatusColor=T.sub
+            if #navItems>sVis and (held or click) and inB(rx+rw-12,slY,13,loadBtnY-slY) then
+                S.navScroll=math.floor(math.max(0,math.min(1,(mouse.Y-slY)/math.max(1,loadBtnY-slY)))*math.max(1,#navItems-sVis))
             end
-        end
 
-        if click then
-            if inB(rx+8,piy,piw,22) then S.pathFocused=true; S.focused=false
-            elseif not inB(lpx,piy,70,22) then S.pathFocused=false end
-        end
-
-        if S.pathFocused then
-            -- Ctrl+V paste
-            if isCtrl() and input.clicked["v"] then
-                local ok,clip=pcall(getclipboard)
-                if ok and type(clip)=="string" then
-                    S.pathInput=S.pathInput..clip:gsub("[^\32-\126]","")
+            -- Scan
+            if click and inB(cx,scanBtnY,lw,28) then
+                S.tools=scanTools(); S.toolSel=1
+                if #S.tools==0 then S.browserStatus="No tools in backpack"; S.browserStatusColor=T.warn
+                else
+                    local tool=S.tools[1].inst
+                    S.navStack={{inst=tool,name=tool.Name}}; S.navItems=buildNavItems(tool); S.navScroll=0; S.navSel=1
+                    S.browserStatus="Found "..#S.tools.." tool(s)"; S.browserStatusColor=T.success
                 end
             end
-            local typeKeys={"a","b","c","d","e","f","g","h","i","j","k","l","m",
-                "n","o","p","q","r","s","t","u","v","w","x","y","z",
-                "0","1","2","3","4","5","6","7","8","9",
-                "space","period","minus","slash","backspace","enter"}
-            for _,k in ipairs(typeKeys) do
-                if keyRepeating(k,dt) then
-                    if k=="backspace" then S.pathInput=S.pathInput:sub(1,-2)
-                    elseif k=="enter" then S.pathFocused=false
-                    else
-                        local c=charMap[k] or k
-                        if #c==1 then
-                            if isShift() and shiftMap[c] then c=shiftMap[c]
-                            elseif isShift() then c=c:upper() end
-                            S.pathInput=S.pathInput..c
+
+            -- Tool list
+            for i=1,toolVis do
+                if S.tools[i] and click and inB(cx+1,toolListY+(i-1)*22,lw-2,21) then
+                    S.toolSel=i; local tool=S.tools[i].inst
+                    S.navStack={{inst=tool,name=tool.Name}}; S.navItems=buildNavItems(tool); S.navScroll=0; S.navSel=1
+                    S.browserStatus=S.tools[i].label; S.browserStatusColor=T.sub
+                end
+            end
+
+            -- Pinned
+            if #S.pinnedScripts>0 then
+                local pinY=scanBtnY+32
+                for i=1,math.min(#S.pinnedScripts,4) do
+                    if click and inB(cx,pinY+14+(i-1)*18,lw,17) then
+                        local p=S.pinnedScripts[i]
+                        if p.inst then
+                            if p.isValue then
+                                local hint=p.inst.ClassName
+                                local tmpl={hint=="BoolValue" and "false" or hint=="StringValue" and "" or "0"}
+                                local snap={lines=tmpl,originalLines=deepCopy(tmpl),scroll=0,scrollX=0,cursorLine=1,cursorChar=1,
+                                    currentPath="[Value] "..p.name,currentInst=nil,editValueInst=p.inst,editValueType=hint,
+                                    editorStatus="Type value",editorStatusColor=nil,searchOpen=false,searchQuery="",
+                                    searchMatches={},searchMatchIdx=1,undoStack={},redoStack={}}
+                                saveActiveTab()
+                                if #S.lines==0 and S.currentPath=="" then S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap)
+                                elseif #S.tabs<MAX_TABS then table.insert(S.tabs,snap); restoreTabSnapshot(snap); S.activeTab=#S.tabs
+                                else S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap) end; S.tab="editor"
+                            elseif p.isScript then
+                                local lines,err=decompileToLines(p.inst)
+                                if lines then openInTab(lines,p.inst:GetFullName(),p.inst); S.tab="editor"
+                                else S.browserStatus=err; S.browserStatusColor=T.err end
+                            end
                         end
                     end
                 end
             end
-        end
 
-        if click and inB(lpx,piy,70,22) and S.pathInput~="" then
-            S.pathFocused=false
-            local inst=resolvePathString(S.pathInput)
-            if inst and (inst:IsA("ModuleScript") or inst:IsA("LocalScript") or inst:IsA("Script")) then
-                local lines,err=decompileToLines(inst)
-                if lines then
-                    S.lines=lines; S.originalLines=deepCopy(lines)
-                    S.currentPath=inst:GetFullName(); S.currentInst=inst
-                    S.cursorLine=1; S.cursorChar=1; S.scroll=0; S.scrollX=0; S.tab="editor"
-                    S.editorStatus="Loaded "..#lines.." lines"; S.editorStatusColor=T.success
-                else S.browserStatus=err; S.browserStatusColor=T.err end
-            else S.browserStatus="Path not found or not a script"; S.browserStatusColor=T.err end
-        end
+            -- Back
+            if click and inB(rx+2,panelY+3,18,18) and #S.navStack>1 then
+                table.remove(S.navStack)
+                S.navItems=buildNavItems(S.navStack[#S.navStack].inst); S.navScroll=0; S.navSel=1
+            end
 
-        for i=1,sVis do
-            if S.scripts[i] and click and inB(rx+1,slY+(i-1)*22,rw-2,21) then
-                S.scriptSel=i
-                if S.tools[S.toolSel] then
-                    S.toolMemory[S.tools[S.toolSel].inst.Name]=i
+            -- Nav item select / drill
+            for i=1,sVis do
+                local item=navItems[i+S.navScroll]
+                if item and click and inB(rx+1,slY+(i-1)*22,rw-10,21) then
+                    local absIdx=i+S.navScroll
+                    if S.navSel==absIdx and item.isContainer and item.hasChildren then
+                        table.insert(S.navStack,{inst=item.inst,name=item.name})
+                        S.navItems=buildNavItems(item.inst); S.navScroll=0; S.navSel=1
+                    else S.navSel=absIdx end
+                end
+            end
+
+            -- Pin button
+            local selEntry=navItems[S.navSel]
+            if selEntry and selEntry.inst then
+                local pinBtnW=38; local loadW=rw-pinBtnW-2
+                if click and inB(rx+loadW+2,loadBtnY,pinBtnW,28) then
+                    local path=selEntry.inst:GetFullName(); local found=false
+                    for i2,p in ipairs(S.pinnedScripts) do
+                        if p.path==path then table.remove(S.pinnedScripts,i2); found=true; break end
+                    end
+                    if not found then table.insert(S.pinnedScripts,{name=selEntry.name,path=path,
+                        inst=selEntry.inst,isScript=selEntry.isScript,isValue=selEntry.isValue}) end
+                end
+            end
+
+            -- Load
+            local loadW2=selEntry and 38 or 0
+            if click and selEntry and inB(rx,loadBtnY,rw-loadW2-(loadW2>0 and 2 or 0),28) then
+                if selEntry.isScript then
+                    local lines,err=decompileToLines(selEntry.inst)
+                    if lines then openInTab(lines,selEntry.inst:GetFullName(),selEntry.inst); S.tab="editor"
+                    else S.browserStatus=err; S.browserStatusColor=T.err end
+                elseif selEntry.isValue then
+                    local hint=selEntry.inst.ClassName
+                    local tmpl=hint=="BoolValue" and {"-- Set BoolValue: "..selEntry.inst.Name,"-- Type: true or false","false"}
+                        or hint=="StringValue" and {"-- Set StringValue: "..selEntry.inst.Name,"",""}
+                        or {"-- Set "..hint..": "..selEntry.inst.Name,"-- Type a number","0"}
+                    local snap={lines=tmpl,originalLines=deepCopy(tmpl),scroll=0,scrollX=0,cursorLine=3,cursorChar=1,
+                        currentPath="[Value] "..selEntry.inst.Name.." ["..hint.."]",currentInst=nil,
+                        editValueInst=selEntry.inst,editValueType=hint,editorStatus="Type value, then Set Value",
+                        editorStatusColor=nil,searchOpen=false,searchQuery="",searchMatches={},searchMatchIdx=1,
+                        undoStack={},redoStack={}}
+                    saveActiveTab()
+                    if #S.lines==0 and S.currentPath=="" then S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap)
+                    elseif #S.tabs<MAX_TABS then table.insert(S.tabs,snap); restoreTabSnapshot(snap); S.activeTab=#S.tabs
+                    else S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap) end; S.tab="editor"
+                elseif selEntry.isContainer and selEntry.hasChildren then
+                    table.insert(S.navStack,{inst=selEntry.inst,name=selEntry.name})
+                    S.navItems=buildNavItems(selEntry.inst); S.navScroll=0; S.navSel=1
+                end
+            end
+
+        else
+            -- GAME BROWSER
+            local rw=cw_full
+            local inputY=panelY+4; local inputH=26
+            local gcBtnW=36; local goBtnW=32
+            local inputW=rw-gcBtnW-goBtnW-16
+            local goX=cx+inputW+4; local gcX=goX+goBtnW+4
+            local filterY=inputY+inputH+4
+            local slY=filterY+22; local loadBtnY2=panelY+panelH-32
+            local sVis=math.floor((loadBtnY2-slY-4)/22)
+
+            -- GC toggle
+            if click and inB(gcX,inputY,gcBtnW,inputH) then
+                S.gcBrowseMode=not S.gcBrowseMode; S.gcBulkSel={}
+            end
+
+            -- GC controls
+            if S.gcBrowseMode then
+                local fW2=52
+                if click and inB(cx,filterY,fW2,18) then S.gcBrowseFilter="config" end
+                if click and inB(cx+fW2+2,filterY,fW2,18) then S.gcBrowseFilter="all" end
+                local scanX=cx+fW2*2+8
+                if click and inB(scanX,filterY,60,18) then
+                    local res,err=browseGCAll(S.gcBrowseFilter)
+                    if res then S.gcBrowseResults=res; S.gcBrowseStatus=#res.." entries"; S.gcBrowseScroll=0; S.scriptSel=1
+                    else S.gcBrowseStatus="Error: "..(err or "?") end
+                end
+            else
+                -- Filter pills
+                local filters={"all","scripts","values","parts","folders","humanoid"}
+                local fW=math.floor(rw/#filters)-1
+                for fi,fk in ipairs(filters) do
+                    if click and inB(cx+(fi-1)*(fW+1),filterY,fW,18) then
+                        S.explorerFilter=fk
+                        if S.scriptSearch~="" then
+                            S.scriptSearchResults=searchAllScripts(S.scriptSearch,fk); S.scriptSel=1; S.scriptSearchScroll=0
+                        end
+                    end
+                end
+            end
+
+            -- Input focus
+            if click and inB(cx,inputY,inputW,inputH) then
+                S.scriptSearchFocused=true; S.pathFocused=false; S.focused=false
+            elseif click then S.scriptSearchFocused=false end
+
+            -- Go
+            local function doSearch()
+                S.scriptSearchResults=searchAllScripts(S.scriptSearch,S.explorerFilter)
+                S.scriptSel=1; S.scriptSearchScroll=0; S.scriptSearchFocused=false
+            end
+            if click and inB(goX,inputY,goBtnW,inputH) then doSearch() end
+
+            -- Typing
+            if S.scriptSearchFocused then
+                if isCtrl() and input.clicked["v"] then
+                    local ok,clip=pcall(getclipboard)
+                    if ok and type(clip)=="string" then S.scriptSearch=S.scriptSearch..clip:gsub("[^-V]","") end
+                end
+                local typeKeys={"a","b","c","d","e","f","g","h","i","j","k","l","m",
+                    "n","o","p","q","r","s","t","u","v","w","x","y","z",
+                    "0","1","2","3","4","5","6","7","8","9",
+                    "space","minus","plus","lbracket","rbracket","semicolon",
+                    "quote","comma","period","slash","backslash","tilde","backspace","enter"}
+                for _,k in ipairs(typeKeys) do
+                    if keyRepeating(k,dt) then
+                        if k=="backspace" then
+                            S.scriptSearch=S.scriptSearch:sub(1,-2)
+                            if S.scriptSearch=="" then S.scriptSearchResults={} end
+                        elseif k=="enter" then doSearch()
+                        else
+                            local c=charMap[k] or k
+                            if #c==1 then
+                                if isShift() and shiftMap[c] then c=shiftMap[c]
+                                elseif isShift() then c=c:upper() end
+                                S.scriptSearch=S.scriptSearch..c
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Wheel + drag scroll
+            local displayItems=S.gcBrowseMode and S.gcBrowseResults or S.scriptSearchResults
+            if wheelDelta~=0 then
+                if S.gcBrowseMode then S.gcBrowseScroll=math.max(0,math.min(math.max(0,#displayItems-sVis),S.gcBrowseScroll+wheelDelta))
+                else S.scriptSearchScroll=math.max(0,math.min(math.max(0,#displayItems-sVis),S.scriptSearchScroll+wheelDelta)) end
+                wheelDelta=0
+            end
+            if #displayItems>sVis and (held or click) and inB(cx+rw-12,slY,13,loadBtnY2-slY) then
+                local relY=math.max(0,math.min(1,(mouse.Y-slY)/math.max(1,loadBtnY2-slY)))
+                local scr=math.floor(relY*math.max(1,#displayItems-sVis))
+                if S.gcBrowseMode then S.gcBrowseScroll=scr else S.scriptSearchScroll=scr end
+            end
+            local listScroll=S.gcBrowseMode and S.gcBrowseScroll or S.scriptSearchScroll
+
+            -- Item clicks
+            for i=1,sVis do
+                local sc=displayItems[i+listScroll]
+                if sc and click and inB(cx,slY+(i-1)*22,rw-10,21) then
+                    local absIdx=i+listScroll
+                    if S.gcBrowseMode then
+                        if S.gcBulkSel[absIdx] then S.gcBulkSel[absIdx]=nil else S.gcBulkSel[absIdx]=true end
+                    end
+                    S.scriptSel=absIdx
+                end
+            end
+
+            -- GC bulk setter
+            if S.gcBrowseMode then
+                local selCount=0; for _ in pairs(S.gcBulkSel) do selCount=selCount+1 end
+                if selCount>0 then
+                    local bvX=cx; local bvW=rw-66
+                    if click and inB(bvX,loadBtnY2-26,bvW,20) then S.gcBulkFocused=true
+                    elseif click then S.gcBulkFocused=false end
+                    if S.gcBulkFocused then
+                        for _,k in ipairs({"0","1","2","3","4","5","6","7","8","9","period","minus","a","b","c","d","e","f","backspace","enter"}) do
+                            if keyRepeating(k,dt) then
+                                if k=="backspace" then S.gcBulkValue=S.gcBulkValue:sub(1,-2)
+                                elseif k=="enter" then S.gcBulkFocused=false
+                                else local c=charMap[k] or k; if #c==1 then S.gcBulkValue=S.gcBulkValue..c end end
+                            end
+                        end
+                    end
+                    if click and inB(cx+rw-62,loadBtnY2-26,60,20) and S.gcBulkValue~="" then
+                        local toSet={}; local applied=0
+                        for idx in pairs(S.gcBulkSel) do
+                            local entry=S.gcBrowseResults[idx]
+                            if entry then
+                                if entry.vtype=="number" and tonumber(S.gcBulkValue) then toSet[entry.key]=tonumber(S.gcBulkValue); applied=applied+1
+                                elseif entry.vtype=="boolean" then toSet[entry.key]=(S.gcBulkValue=="true"); applied=applied+1
+                                else toSet[entry.key]=S.gcBulkValue; applied=applied+1 end
+                            end
+                        end
+                        if next(toSet) then pcall(setgc,toSet) end
+                        S.gcBrowseStatus="Set "..applied; S.gcBulkSel={}; S.gcBulkValue=""; S.gcBulkFocused=false
+                    end
+                end
+            end
+
+            -- Load button
+            local sc2=displayItems[S.scriptSel]
+            if click and sc2 and inB(cx,loadBtnY2,rw,28) then
+                if S.gcBrowseMode then
+                    pushUndo(); local line=sc2.key.." = "..sc2.val
+                    if #S.lines==0 then S.lines={line}
+                    else table.insert(S.lines,S.cursorLine+1,line); S.cursorLine=S.cursorLine+1; S.cursorChar=#line+1 end
+                    saveActiveTab(); S.browserStatus="Inserted: "..line; S.browserStatusColor=T.success
+                elseif sc2.isScript then
+                    local lines,err=decompileToLines(sc2.inst)
+                    if lines then openInTab(lines,sc2.inst:GetFullName(),sc2.inst); S.tab="editor"
+                    else S.browserStatus=err; S.browserStatusColor=T.err end
+                elseif sc2.isValue then
+                    local hint=sc2.inst.ClassName
+                    local tmpl=hint=="BoolValue" and {"false"} or hint=="StringValue" and {""} or {"0"}
+                    local snap={lines=tmpl,originalLines=deepCopy(tmpl),scroll=0,scrollX=0,cursorLine=1,cursorChar=1,
+                        currentPath="[Value] "..sc2.inst.Name,currentInst=nil,editValueInst=sc2.inst,editValueType=hint,
+                        editorStatus="Type value",editorStatusColor=nil,searchOpen=false,searchQuery="",
+                        searchMatches={},searchMatchIdx=1,undoStack={},redoStack={}}
+                    saveActiveTab()
+                    if #S.lines==0 and S.currentPath=="" then S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap)
+                    elseif #S.tabs<MAX_TABS then table.insert(S.tabs,snap); restoreTabSnapshot(snap); S.activeTab=#S.tabs
+                    else S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap) end; S.tab="editor"
                 end
             end
         end
-
-        if click and #S.scripts>0 and inB(rx,loadBtnY,rw,28) then
-            local sc=S.scripts[S.scriptSel]
-            if sc then
-                local lines,err=decompileToLines(sc.inst)
-                if lines then
-                    S.lines=lines; S.originalLines=deepCopy(lines)
-                    S.currentPath=sc.inst:GetFullName(); S.currentInst=sc.inst
-                    S.cursorLine=1; S.cursorChar=1; S.scroll=0; S.scrollX=0; S.tab="editor"
-                    S.editorStatus="Loaded "..#lines.." lines"; S.editorStatusColor=T.success
-                else S.browserStatus=err; S.browserStatusColor=T.err end
-            end
-        end
     end
-
     -- editor
     if S.tab=="editor" then
-        local edY,pathBarY,searchBarY,liBarY,codeY,codeH,codeW,codeStartX=edLayout()
+        local edY,pathBarY,searchBarY,liBarY,codeY,codeH,codeW,codeStartX,tabBarY=edLayout()
         local visLines=math.floor(codeH/LINE_H)
         local totalLines=#S.lines
         local maxScroll=math.max(0,totalLines-visLines)
         local sbX=x+w-SB_W-2
+
+        -- tab bar clicks
+        local numTabs=math.max(1,#S.tabs)
+        local tabW=math.min(150,math.floor((w-28)/numTabs))
+        for i=1,numTabs do
+            local tx=x+(i-1)*tabW
+            if click and inB(tx,tabBarY+2,tabW-1,TAB_BAR_H-4) then
+                -- close X (rightmost 16px of tab)
+                if inB(tx+tabW-18,tabBarY+2,16,TAB_BAR_H-4) then
+                    closeTab(i)
+                elseif i~=S.activeTab then
+                    switchTab(i)
+                end
+            end
+        end
+        -- new tab button
+        local plusX=x+numTabs*tabW
+        if numTabs<MAX_TABS and click and inB(plusX,tabBarY+4,20,TAB_BAR_H-8) then
+            newTab(); S.tab="editor"
+        end
 
         local maxLineLen=0
         for _,l in ipairs(S.lines) do if #l>maxLineLen then maxLineLen=#l end end
@@ -1029,7 +2231,125 @@ local function handleInput(dt)
                 S.scroll=math.max(0,math.min(maxScroll,S.scroll))
                 S.cursorLine=math.min(S.cursorLine,math.max(1,#lines))
                 S.editorStatus="Reloaded "..#lines.." lines"; S.editorStatusColor=T.success
+                saveActiveTab()  -- persist reload into tab snapshot
             else S.editorStatus="Reload failed"; S.editorStatusColor=T.err end
+        end
+
+        -- Ctrl+Z undo, Ctrl+Y redo
+        if isCtrl() and input.clicked["z"] then doUndo() end
+        if isCtrl() and input.clicked["y"] then doRedo() end
+
+        -- Ctrl+Shift+F cross-tab search
+        if isCtrl() and isShift() and input.clicked["f"] then
+            S.crossSearchOpen=not S.crossSearchOpen
+            S.crossSearchFocused=S.crossSearchOpen
+            S.crossSearchResults={}
+        end
+
+        -- cross-search panel input
+        if S.crossSearchOpen then
+            if input.clicked["escape"] then
+                S.crossSearchOpen=false; S.crossSearchFocused=false
+            end
+            local csX=x+30; local csiX=csX+130; local csiW=S.w-60-200
+            local csbX=csiX+csiW+4
+            if click and inB(csiX,codeY+23,csiW,16) then S.crossSearchFocused=true
+            elseif click and not inB(csbX,codeY+23,52,16) then S.crossSearchFocused=false end
+            -- search button
+            if click and inB(csbX,codeY+23,52,16) then
+                S.crossSearchResults=runCrossSearch(S.crossSearchQuery)
+            end
+            -- click result to jump
+            for i=1,math.min(#S.crossSearchResults,8) do
+                local r=S.crossSearchResults[i]
+                local ry2=codeY+40+(i-1)*16+(20)
+                if click and inB(csX+4,ry2,S.w-68,15) then
+                    switchTab(r.tabIdx)
+                    S.cursorLine=r.lineIdx; S.cursorChar=1
+                    S.scroll=math.max(0,r.lineIdx-5)
+                    S.crossSearchOpen=false; S.crossSearchFocused=false
+                end
+            end
+            if S.crossSearchFocused then
+                local typeKeys={"a","b","c","d","e","f","g","h","i","j","k","l","m",
+                    "n","o","p","q","r","s","t","u","v","w","x","y","z",
+                    "0","1","2","3","4","5","6","7","8","9","space","minus","backspace","enter"}
+                for _,k in ipairs(typeKeys) do
+                    if keyRepeating(k,dt) then
+                        if k=="backspace" then S.crossSearchQuery=S.crossSearchQuery:sub(1,-2)
+                        elseif k=="enter" then
+                            S.crossSearchResults=runCrossSearch(S.crossSearchQuery)
+                            S.crossSearchFocused=false
+                        else
+                            local c=charMap[k] or k
+                            if #c==1 then
+                                if isShift() and shiftMap[c] then c=shiftMap[c]
+                                elseif isShift() then c=c:upper() end
+                                S.crossSearchQuery=S.crossSearchQuery..c
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Ctrl+V paste into editor
+        if isCtrl() and input.clicked["v"] and S.focused then
+            local ok,clip=pcall(getclipboard)
+            if ok and type(clip)=="string" then
+                pushUndo()
+                -- split clipboard by newlines and insert
+                local clipLines={}
+                for ln in (clip.."\n"):gmatch("([^\n]*)\n") do
+                    table.insert(clipLines, ln:gsub("[^\32-\126]",""))
+                end
+                if #clipLines==1 then
+                    -- single line: insert at cursor
+                    local cur=S.lines[S.cursorLine] or ""
+                    S.lines[S.cursorLine]=cur:sub(1,S.cursorChar-1)..clipLines[1]..cur:sub(S.cursorChar)
+                    S.cursorChar=S.cursorChar+#clipLines[1]
+                else
+                    -- multi-line: split current line and insert
+                    local cur=S.lines[S.cursorLine] or ""
+                    local before=cur:sub(1,S.cursorChar-1)
+                    local after=cur:sub(S.cursorChar)
+                    S.lines[S.cursorLine]=before..clipLines[1]
+                    for i=2,#clipLines-1 do
+                        table.insert(S.lines, S.cursorLine+i-1, clipLines[i])
+                    end
+                    local lastIdx=S.cursorLine+#clipLines-1
+                    table.insert(S.lines, lastIdx, clipLines[#clipLines]..after)
+                    S.cursorLine=lastIdx; S.cursorChar=#clipLines[#clipLines]+1
+                end
+            end
+        end
+
+        -- Ctrl+G line jump
+        if isCtrl() and input.clicked["g"] then
+            S.lineJumpOpen=not S.lineJumpOpen
+            S.lineJumpInput=""; S.lineJumpFocused=S.lineJumpOpen
+        end
+        if S.lineJumpOpen then
+            if input.clicked["escape"] then
+                S.lineJumpOpen=false; S.lineJumpFocused=false; S.lineJumpInput=""
+            end
+            if S.lineJumpFocused then
+                local numKeys={"0","1","2","3","4","5","6","7","8","9","backspace","enter"}
+                for _,k in ipairs(numKeys) do
+                    if keyRepeating(k,dt) then
+                        if k=="backspace" then S.lineJumpInput=S.lineJumpInput:sub(1,-2)
+                        elseif k=="enter" then
+                            local ln=tonumber(S.lineJumpInput)
+                            if ln then
+                                ln=math.max(1,math.min(ln,math.max(1,#S.lines)))
+                                S.cursorLine=ln; S.cursorChar=1
+                                S.scroll=math.max(0,math.min(math.max(0,#S.lines-visLines),ln-math.floor(visLines/2)))
+                            end
+                            S.lineJumpOpen=false; S.lineJumpFocused=false; S.lineJumpInput=""
+                        else S.lineJumpInput=S.lineJumpInput..k end
+                    end
+                end
+            end
         end
 
         -- Ctrl+F search toggle
@@ -1183,9 +2503,10 @@ local function handleInput(dt)
                 "quote","comma","period","slash","backslash","tilde",
                 "backspace","enter","tab"}
             for _,k in ipairs(typeKeys) do
-                if keyRepeating(k,dt) then
+                if keyRepeating(k,dt) and not isCtrl() then
                     local cur=S.lines[S.cursorLine] or ""
                     if k=="backspace" then
+                        pushUndo()
                         if S.cursorChar>1 then
                             S.lines[S.cursorLine]=cur:sub(1,S.cursorChar-2)..cur:sub(S.cursorChar)
                             S.cursorChar=S.cursorChar-1
@@ -1198,6 +2519,7 @@ local function handleInput(dt)
                             if S.cursorLine<S.scroll then S.scroll=math.max(0,S.cursorLine-1) end
                         end
                     elseif k=="enter" then
+                        pushUndo()
                         local before=cur:sub(1,S.cursorChar-1); local after=cur:sub(S.cursorChar)
                         local indent=before:match("^(%s*)") or ""
                         S.lines[S.cursorLine]=before
@@ -1205,19 +2527,19 @@ local function handleInput(dt)
                         S.cursorLine=S.cursorLine+1; S.cursorChar=#indent+1; S.scrollX=0
                         if S.cursorLine>S.scroll+visLines then S.scroll=S.scroll+1 end
                     elseif k=="tab" then
+                        pushUndo()
                         S.lines[S.cursorLine]=cur:sub(1,S.cursorChar-1).."    "..cur:sub(S.cursorChar)
                         S.cursorChar=S.cursorChar+4
                         if S.cursorChar>S.scrollX+visChars then S.scrollX=S.cursorChar-visChars end
                     else
-                        if not isCtrl() then
-                            local c=charMap[k] or k
-                            if #c==1 then
-                                if isShift() and shiftMap[c] then c=shiftMap[c]
-                                elseif isShift() then c=c:upper() end
-                                S.lines[S.cursorLine]=cur:sub(1,S.cursorChar-1)..c..cur:sub(S.cursorChar)
-                                S.cursorChar=S.cursorChar+1
-                                if S.cursorChar>S.scrollX+visChars then S.scrollX=S.cursorChar-visChars end
-                            end
+                        local c=charMap[k] or k
+                        if #c==1 then
+                            pushUndo()
+                            if isShift() and shiftMap[c] then c=shiftMap[c]
+                            elseif isShift() then c=c:upper() end
+                            S.lines[S.cursorLine]=cur:sub(1,S.cursorChar-1)..c..cur:sub(S.cursorChar)
+                            S.cursorChar=S.cursorChar+1
+                            if S.cursorChar>S.scrollX+visChars then S.scrollX=S.cursorChar-visChars end
                         end
                     end
                     break
@@ -1225,26 +2547,81 @@ local function handleInput(dt)
             end
         end
 
-        -- apply button (with GC matcher)
+        -- revert to original content
+        local rvW=60; local rvX=x+w-150-PAD-rvW-4
+        if S.originalLines and #S.originalLines>0 and not S.editValueInst then
+            if click and inB(rvX,y+h-BBH+6,rvW,24) then
+                pushUndo()
+                S.lines=deepCopy(S.originalLines)
+                S.cursorLine=1; S.cursorChar=1; S.scroll=0
+                S.editorStatus="Reverted to original"; S.editorStatusColor=T.warn
+                S.diffPanelOpen=false
+            end
+        end
+
+        -- close diff panel on click
+        if S.diffPanelOpen then
+            local dpH=math.min(#S.diffResults,8)*18+28
+            local dpY=y+h-BBH-dpH-4
+            if click and inB(x+w-320-PAD,dpY,320,dpH) then
+                S.diffPanelOpen=false
+            end
+        end
+
+        -- apply / set value button
         local abW=150; local abX=x+w-abW-PAD; local abY=y+h-BBH+6
         if click and inB(abX,abY,abW,24) then
-            local applied,failed,notInGC=applyLinesGC(S.lines)
-            local parts={}
-            if applied>0 then table.insert(parts,"Applied "..applied) end
-            if #notInGC>0 then
-                local ng=#notInGC>3
-                    and table.concat(notInGC,",",1,3).."…"
-                    or table.concat(notInGC,",")
-                table.insert(parts,"Not in GC: "..ng)
-                S.editorStatusColor=T.warn
-            elseif #failed>0 then
-                table.insert(parts,"Parse err: "..table.concat(failed,",",1,math.min(3,#failed)))
-                S.editorStatusColor=T.warn
-            else S.editorStatusColor=T.success end
-            S.editorStatus=table.concat(parts," | ")
+            if S.editValueInst then
+                -- Direct value set
+                local rawVal=""
+                for _,l in ipairs(S.lines) do
+                    local trimmed=l:match("^%s*(.-)%s*$")
+                    if trimmed~="" then rawVal=trimmed; break end
+                end
+                local ok,err=pcall(function()
+                    local vtype=S.editValueType
+                    if vtype=="BoolValue" then
+                        S.editValueInst.Value=(rawVal=="true" or rawVal=="1")
+                    elseif vtype=="NumberValue" or vtype=="IntValue"
+                        or vtype=="DoubleConstrainedValue" or vtype=="IntConstrainedValue" then
+                        S.editValueInst.Value=tonumber(rawVal) or S.editValueInst.Value
+                    else
+                        S.editValueInst.Value=rawVal
+                    end
+                end)
+                if ok then
+                    S.editorStatus="Value set to: "..rawVal; S.editorStatusColor=T.success
+                else
+                    S.editorStatus="Set failed: "..(err or "?"); S.editorStatusColor=T.err
+                end
+            else
+                local applied,failed,notInGC=applyLinesGC(S.lines)
+                local parts={}
+                if applied>0 then table.insert(parts,"Applied "..applied) end
+                if #notInGC>0 then
+                    local ng=#notInGC>3 and table.concat(notInGC,",",1,3).."…" or table.concat(notInGC,",")
+                    table.insert(parts,"Not in GC: "..ng); S.editorStatusColor=T.warn
+                elseif #failed>0 then
+                    table.insert(parts,"Parse err: "..table.concat(failed,",",1,math.min(3,#failed)))
+                    S.editorStatusColor=T.warn
+                else S.editorStatusColor=T.success end
+                S.editorStatus=table.concat(parts," | ")
+                -- run value diff after apply
+                if applied>0 then
+                    local appliedPairs={}
+                    for _,line in ipairs(S.lines) do
+                        local k,v=line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
+                        if k and v~="" then table.insert(appliedPairs,{key=k,value=v}) end
+                    end
+                    if #appliedPairs>0 then
+                        S.diffResults=runValueDiff(appliedPairs)
+                        S.diffPanelOpen=true
+                    end
+                end
+            end
         end
     end
-end
+end  -- handleInput
 
 -- ===== Main loop =====
 RunService.RenderStepped:Connect(function(dt)
@@ -1271,15 +2648,17 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    if S.pathFocused or S.searchFocused or (S.tab=="editor" and S.focused) then
-        setrobloxinput(false)
-    else
-        setrobloxinput(true)
-    end
+    -- Block game input whenever any text input is active or UI is focused
+    local anyTyping = S.pathFocused or S.searchFocused or S.scriptSearchFocused
+        or S.autoApplyFocused or S.listeningForKey or S.lineJumpFocused or S.gcBulkFocused
+        or S.crossSearchFocused or S.presetNameFocused
+        or (S.tab=="editor" and S.focused)
+    setrobloxinput(not anyTyping)  -- block game input ONLY when a textbox is active
 
     renderWindow()
 
     if S.tab~=prevTab then
+        if prevTab=="editor" then saveActiveTab() end  -- persist edits when leaving editor
         if S.tab=="browser" then
             hidePrefix("ed_"); hidePrefix("li_"); hidePrefix("st_")
         elseif S.tab=="editor" then
