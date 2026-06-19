@@ -43,12 +43,35 @@ local CR = 5  -- corner radius for UI elements
 
 -- ===== Themes =====
 local THEMES = {
-    {name="Dark",       bg=Color3.fromRGB(10,10,14),   surface=Color3.fromRGB(16,16,22),  panel=Color3.fromRGB(22,22,30),   panel2=Color3.fromRGB(28,28,40),  border=Color3.fromRGB(44,44,58),   accent=Color3.fromRGB(99,102,241),  accentHi=Color3.fromRGB(130,133,255), accentDim=Color3.fromRGB(50,52,140)},
-    {name="OLED",       bg=Color3.fromRGB(0,0,0),      surface=Color3.fromRGB(10,10,10),  panel=Color3.fromRGB(16,16,16),   panel2=Color3.fromRGB(22,22,22),  border=Color3.fromRGB(40,40,40),   accent=Color3.fromRGB(99,102,241),  accentHi=Color3.fromRGB(130,133,255), accentDim=Color3.fromRGB(40,42,120)},
-    {name="Midnight",   bg=Color3.fromRGB(8,10,20),    surface=Color3.fromRGB(12,16,32),  panel=Color3.fromRGB(18,22,44),   panel2=Color3.fromRGB(22,28,56),  border=Color3.fromRGB(40,50,90),   accent=Color3.fromRGB(80,140,255),  accentHi=Color3.fromRGB(120,170,255), accentDim=Color3.fromRGB(30,60,140)},
-    {name="Forest",     bg=Color3.fromRGB(8,14,10),    surface=Color3.fromRGB(12,20,14),  panel=Color3.fromRGB(16,28,18),   panel2=Color3.fromRGB(20,34,22),  border=Color3.fromRGB(36,60,40),   accent=Color3.fromRGB(48,200,90),   accentHi=Color3.fromRGB(80,220,120),  accentDim=Color3.fromRGB(20,80,36)},
-    {name="Rose",       bg=Color3.fromRGB(18,10,12),   surface=Color3.fromRGB(26,14,18),  panel=Color3.fromRGB(34,18,24),   panel2=Color3.fromRGB(42,22,30),  border=Color3.fromRGB(80,40,52),   accent=Color3.fromRGB(240,80,120),  accentHi=Color3.fromRGB(255,120,150), accentDim=Color3.fromRGB(120,30,56)},
+    {name="Dark",     bg=Color3.fromRGB(10,10,14),  surface=Color3.fromRGB(16,16,22),  panel=Color3.fromRGB(22,22,30),  panel2=Color3.fromRGB(28,28,40),  border=Color3.fromRGB(44,44,58),   accent=Color3.fromRGB(99,102,241),  accentHi=Color3.fromRGB(130,133,255), accentDim=Color3.fromRGB(50,52,140)},
+    {name="OLED",     bg=Color3.fromRGB(0,0,0),     surface=Color3.fromRGB(10,10,10),  panel=Color3.fromRGB(16,16,16),  panel2=Color3.fromRGB(22,22,22),  border=Color3.fromRGB(40,40,40),   accent=Color3.fromRGB(99,102,241),  accentHi=Color3.fromRGB(130,133,255), accentDim=Color3.fromRGB(40,42,120)},
+    {name="Midnight", bg=Color3.fromRGB(8,10,20),   surface=Color3.fromRGB(12,16,32),  panel=Color3.fromRGB(18,22,44),  panel2=Color3.fromRGB(22,28,56),  border=Color3.fromRGB(40,50,90),   accent=Color3.fromRGB(80,140,255),  accentHi=Color3.fromRGB(120,170,255), accentDim=Color3.fromRGB(30,60,140)},
+    {name="Forest",   bg=Color3.fromRGB(8,14,10),   surface=Color3.fromRGB(12,20,14),  panel=Color3.fromRGB(16,28,18),  panel2=Color3.fromRGB(20,34,22),  border=Color3.fromRGB(36,60,40),   accent=Color3.fromRGB(48,200,90),   accentHi=Color3.fromRGB(80,220,120),  accentDim=Color3.fromRGB(20,80,36)},
+    {name="Rose",     bg=Color3.fromRGB(18,10,12),  surface=Color3.fromRGB(26,14,18),  panel=Color3.fromRGB(34,18,24),  panel2=Color3.fromRGB(42,22,30),  border=Color3.fromRGB(80,40,52),   accent=Color3.fromRGB(240,80,120),  accentHi=Color3.fromRGB(255,120,150), accentDim=Color3.fromRGB(120,30,56)},
+    {name="Slate",    bg=Color3.fromRGB(15,17,21),  surface=Color3.fromRGB(22,25,31),  panel=Color3.fromRGB(29,33,41),  panel2=Color3.fromRGB(36,41,51),  border=Color3.fromRGB(55,62,78),   accent=Color3.fromRGB(56,189,248),  accentHi=Color3.fromRGB(100,210,255), accentDim=Color3.fromRGB(20,80,120)},
+    {name="Ember",    bg=Color3.fromRGB(16,10,8),   surface=Color3.fromRGB(24,14,10),  panel=Color3.fromRGB(32,18,12),  panel2=Color3.fromRGB(40,22,14),  border=Color3.fromRGB(80,44,28),   accent=Color3.fromRGB(251,146,60),  accentHi=Color3.fromRGB(255,180,100), accentDim=Color3.fromRGB(120,50,10)},
+    {name="Arctic",   bg=Color3.fromRGB(10,14,18),  surface=Color3.fromRGB(14,20,28),  panel=Color3.fromRGB(18,26,38),  panel2=Color3.fromRGB(22,32,48),  border=Color3.fromRGB(40,58,80),   accent=Color3.fromRGB(120,220,200), accentHi=Color3.fromRGB(160,240,220), accentDim=Color3.fromRGB(30,90,80)},
 }
+
+-- Theme persistence — save/load from JSON file
+local THEME_FILE = "acs_theme.json"
+local function saveTheme(idx)
+    pcall(function()
+        writefile(THEME_FILE, game:GetService("HttpService"):JSONEncode({themeIdx=idx}))
+    end)
+end
+local function loadSavedTheme()
+    if not isfile(THEME_FILE) then return 1 end
+    local ok,data=pcall(function()
+        return game:GetService("HttpService"):JSONDecode(readfile(THEME_FILE))
+    end)
+    if ok and data and data.themeIdx then
+        local idx=math.max(1,math.min(#THEMES,data.themeIdx))
+        return idx
+    end
+    return 1
+end
+
 local function applyTheme(idx)
     local th=THEMES[idx]
     if not th then return end
@@ -184,7 +207,7 @@ local S = {
     tab="browser",
 
     -- browser
-    tools={},toolSel=1,
+    tools={},toolSel=1,toolScroll=0,toolSearch="",toolSearchFocused=false,
     scripts={},scriptSel=1,
     pathInput="",pathFocused=false,
     browserStatus="Click Scan to load your inventory",
@@ -243,7 +266,7 @@ local S = {
     -- browser
     browserFilter="scripts",
     browserSubTab="tool",  -- "tool" = tool explorer, "game" = game-wide search
-    themeIdx=1,
+    themeIdx=loadSavedTheme(),
 
     -- GC browser
     gcBrowseMode=false,
@@ -258,8 +281,9 @@ local S = {
     presetNameInput="",
     presetNameFocused=false,
 
-    settingsScroll=0,       -- settings panel vertical scroll
+    settingsScroll=0,
     settingsScrollDrag=false,
+    settingsMaxScroll=400,  -- updated each frame by renderSettings
     lineJumpOpen=false,
     lineJumpInput="",
     lineJumpFocused=false,
@@ -387,7 +411,9 @@ local function openInTab(lines,path,inst,statusMsg)
 end
 
 local VALUE_TYPES={"NumberValue","BoolValue","StringValue","IntValue",
-    "DoubleConstrainedValue","IntConstrainedValue","Vector3Value","Color3Value"}
+    "DoubleConstrainedValue","IntConstrainedValue","Vector3Value","Color3Value",
+    "CFrameValue","ObjectValue","RayValue","NumberSequenceValue","ColorSequenceValue",
+    "BrickColorValue"}
 local function isScriptType(c)
     return c:IsA("ModuleScript") or c:IsA("LocalScript") or c:IsA("Script")
 end
@@ -396,13 +422,23 @@ local function isValueType(c)
     return false
 end
 
-local PART_TYPES={"Part","MeshPart","WedgePart","SpecialMesh","UnionOperation","TrussPart","CornerWedgePart"}
+-- Exact ClassName matching prevents false positives from IsA() inheritance
+local PART_CLASS={Part=1,MeshPart=1,WedgePart=1,UnionOperation=1,TrussPart=1,
+    CornerWedgePart=1,SpawnLocation=1,Seat=1,VehicleSeat=1,SpecialMesh=0}
 local function isPartType(c)
-    for _,t in ipairs(PART_TYPES) do if c:IsA(t) then return true end end
-    return c:IsA("BasePart")
+    -- Only explicit physical part types — NOT using IsA("BasePart") which is too broad
+    local cn=c.ClassName
+    return cn=="Part" or cn=="MeshPart" or cn=="WedgePart" or cn=="UnionOperation"
+        or cn=="TrussPart" or cn=="CornerWedgePart" or cn=="SpawnLocation"
+        or cn=="Seat" or cn=="VehicleSeat"
 end
 local function isContainerType(c)
-    return c:IsA("Folder") or c:IsA("Model") or c:IsA("Configuration")
+    -- Only Folder — Model matches too many things (Characters, NPCs, etc)
+    local cn=c.ClassName
+    return cn=="Folder" or cn=="Configuration"
+end
+local function isHumanoidType(c)
+    return c.ClassName=="Humanoid"
 end
 
 -- Build nav items for current explorer level
@@ -442,8 +478,28 @@ local function searchAllScripts(query, filterMode)
     local results={}
     if query=="" then return results end
     local q=query:lower()
-    local ok,desc=pcall(function() return game:GetDescendants() end)
-    if not ok then return results end
+    local lp2=game:GetService("Players").LocalPlayer
+    -- Scripts/values: search LocalPlayer only (PlayerScripts, tools, etc.)
+    -- Parts/folders/humanoids/all: also scan workspace for world objects
+    local desc={}
+    local seen={}  -- deduplicate: LocalPlayer character lives under both Players and workspace
+    local scanWorkspace = filterMode=="parts" or filterMode=="folders"
+        or filterMode=="humanoid" or filterMode=="all"
+    local ok1,lpDesc=pcall(function() return lp2 and lp2:GetDescendants() or {} end)
+    if ok1 then
+        for _,v in ipairs(lpDesc) do
+            seen[v]=true
+            table.insert(desc,v)
+        end
+    end
+    if scanWorkspace then
+        local ok2,wsDesc=pcall(function() return workspace:GetDescendants() end)
+        if ok2 then
+            for _,v in ipairs(wsDesc) do
+                if not seen[v] then table.insert(desc,v) end
+            end
+        end
+    end
     for _,inst in ipairs(desc) do
         local isSc=isScriptType(inst)
         local isVal=isValueType(inst)
@@ -455,8 +511,7 @@ local function searchAllScripts(query, filterMode)
         elseif filterMode=="parts" then include=isPt
         elseif filterMode=="folders" then include=isCnt
         elseif filterMode=="humanoid" then
-            local ok2,h=pcall(function() return inst:IsA("Humanoid") end)
-            include=ok2 and h
+            include=isHumanoidType(inst)
         else include=true end
         if include and inst.Name:lower():find(q,1,true) then
             local pname=inst.Parent and inst.Parent.Name or "?"
@@ -465,15 +520,21 @@ local function searchAllScripts(query, filterMode)
                 local ok2,v=pcall(function() return inst.Value end)
                 if ok2 then cv=" = "..tostring(v) end
             end
+            local fullPath=""
+            pcall(function() fullPath=inst:GetFullName() end)
             table.insert(results,{
-                label=inst.Name.." ["..inst.ClassName.."] › "..pname..cv,
+                label=inst.Name.." ["..inst.ClassName.."]"..cv,
                 inst=inst, isScript=isSc, isValue=isVal,
+                fullPath=fullPath,
             })
             if #results>=80 then break end
         end
     end
     return results
 end
+
+-- Apply saved theme on startup
+applyTheme(S.themeIdx)
 
 -- Initialize first tab
 S.tabs[1] = {
@@ -522,43 +583,15 @@ local function getScripts(tool, filterMode)
 end
 
 local function decompileToLines(inst)
-    -- For ModuleScripts, try require() to get the actual config table
-    if inst:IsA("ModuleScript") then
-        local ok,result=pcall(require,inst)
-        if ok and type(result)=="table" then
-            local lines={}
-            local sorted={}
-            for k,v in pairs(result) do
-                local vt=type(v)
-                if vt=="number" or vt=="boolean" or vt=="string" then
-                    table.insert(sorted,{k=tostring(k),v=v,vt=vt})
-                end
-            end
-            table.sort(sorted,function(a,b) return a.k<b.k end)
-            for _,entry in ipairs(sorted) do
-                local val
-                if entry.vt=="boolean" then val=tostring(entry.v)
-                elseif entry.vt=="string" then val='"'..entry.v..'"'
-                else val=tostring(entry.v) end
-                table.insert(lines,entry.k.." = "..val)
-            end
-            if #lines>0 then return lines,nil end
-        end
-    end
-    -- Fall back to decompile()
+    -- Always use decompile() for source — never format as key=value (that is for value types)
     local ok,src=pcall(decompile,inst)
-    if not ok or not src or src=="" then return nil,"decompile() failed — try Values filter" end
-    local lines={}
-    for l in (src.."\n"):gmatch("([^\n]*)\n") do table.insert(lines,l) end
-    if lines[#lines]=="" then table.remove(lines) end
-    -- Try to extract only key=value lines if the output looks like bytecode
-    local kvLines={}
-    for _,l in ipairs(lines) do
-        if l:match("^%s*[%w_]+%s*=") and not l:match("^%-%-") then
-            table.insert(kvLines,l)
-        end
+    if not ok or not src or src=="" then
+        return nil,"decompile() failed for "..inst.ClassName
     end
-    return (#kvLines>3 and kvLines or lines),nil
+    local out={}
+    for l in (src.."\n"):gmatch("([^\n]*)\n") do table.insert(out,l) end
+    if #out>0 and out[#out]=="" then table.remove(out) end
+    return out,nil
 end
 
 local function resolvePathString(path)
@@ -927,7 +960,7 @@ local function renderBrowser()
             "br_game_cnt","br_game_list_sb_bg","br_game_list_sb",
         }) do hide(id) end
         for i=1,6 do hide("br_gsf_"..i); hide("br_gsf_t"..i) end
-        for i=1,30 do hide("br_gi_"..i); hide("br_gt_"..i) end
+        for i=1,30 do hide("br_gi_"..i); hide("br_gt_"..i); hide("br_gpath_"..i) end
         hide("br_game_load"); hide("br_game_load_t")
 
         -- Left panel: tools
@@ -936,17 +969,49 @@ local function renderBrowser()
         Outline("br_lbg_o",cx,panelY,lw,panelH,T.border,3,CR)
         Txt("br_lhdr",cx+8,panelY+6,"TOOLS",T.sub,11,4)
         Ln("br_lhl",cx,panelY+22,cx+lw,panelY+22,nil,1,3)
-
-        local toolListY=panelY+26; local scanBtnY=panelY+panelH-32
-        local toolVis=math.floor((scanBtnY-toolListY-4)/22)
-        for i=1,toolVis do
-            local tool=S.tools[i]
-            if not tool then hide("br_ti_"..i); hide("br_tt_"..i) break end
-            local iy=toolListY+(i-1)*22; local sel=S.toolSel==i
-            Box("br_ti_"..i,cx+1,iy,lw-2,21,sel and T.accent or (inB(cx+1,iy,lw-2,21) and T.panel or T.surface),3)
-            Txt("br_tt_"..i,cx+8,iy+4,tool.label,sel and T.text or T.sub,12,4)
+        -- Tool search bar
+        local tsY=panelY+26; local tsH=20; local tsW=lw-16
+        Box("br_ts_bg",cx+4,tsY,tsW,tsH,T.panel2,3,CR)
+        Outline("br_ts_o",cx+4,tsY,tsW,tsH,S.toolSearchFocused and T.accent or T.border,4,CR)
+        local tsCursor=S.toolSearchFocused and (math.floor(tick()*2)%2==0 and "|" or "") or ""
+        local tsDisp=S.toolSearch..tsCursor
+        if tsDisp=="" and not S.toolSearchFocused then
+            Txt("br_ts_t",cx+8,tsY+4,"Filter tools…",T.sub,10,4)
+        else
+            Txt("br_ts_t",cx+8,tsY+4,tsDisp,T.text,10,4)
         end
-        for i=math.max(1,#S.tools+1),toolVis+2 do hide("br_ti_"..i); hide("br_tt_"..i) end
+        local toolListY=panelY+50; local scanBtnY=panelY+panelH-32
+        local toolVis=math.floor((scanBtnY-toolListY-4)/22)
+        -- Filter tools by search query for render
+        local filteredToolsR={}
+        local tsqR=S.toolSearch:lower()
+        for _,t in ipairs(S.tools) do
+            if tsqR=="" or t.label:lower():find(tsqR,1,true) then
+                table.insert(filteredToolsR,t)
+            end
+        end
+        local maxToolScroll=math.max(0,#filteredToolsR-toolVis)
+        S.toolScroll=math.max(0,math.min(maxToolScroll,S.toolScroll))
+        local sbW=8; local sbX=cx+lw-sbW-2
+        for i=1,toolVis do
+            local tool=filteredToolsR[i+S.toolScroll]
+            if not tool then hide("br_ti_"..i); hide("br_tt_"..i) break end
+            local iy=toolListY+(i-1)*22; local absIdx=i+S.toolScroll
+            local sel=S.toolSel==absIdx
+            Box("br_ti_"..i,cx+1,iy,lw-sbW-4,21,sel and T.accent or (inB(cx+1,iy,lw-sbW-4,21) and T.panel or T.surface),3)
+            local lbl=tool.label; if tw(lbl,12)>lw-sbW-20 then lbl=lbl:sub(1,28).."…" end
+            Txt("br_tt_"..i,cx+8,iy+4,lbl,sel and T.text or T.sub,12,4)
+        end
+        for i=math.max(1,#filteredToolsR-S.toolScroll+1),toolVis+2 do hide("br_ti_"..i); hide("br_tt_"..i) end
+        -- Scrollbar
+        if #filteredToolsR>toolVis then
+            local trackH=scanBtnY-toolListY-2
+            local thumbH=math.max(20,math.floor(toolVis/#S.tools*trackH))
+            local thumbY=toolListY+math.floor(S.toolScroll/math.max(1,maxToolScroll)*(trackH-thumbH))
+            thumbY=math.max(toolListY,math.min(toolListY+trackH-thumbH,thumbY))
+            Box("br_tool_sb_bg",sbX,toolListY,sbW,trackH,T.panel2,3,4)
+            Box("br_tool_sb",sbX,thumbY,sbW,thumbH,T.border,4,4)
+        else hide("br_tool_sb_bg"); hide("br_tool_sb") end
 
         Box("br_scan",cx,scanBtnY,lw,28,inB(cx,scanBtnY,lw,28) and T.accentHi or T.accent,3,CR)
         Txt("br_scan_t",cx+lw/2,scanBtnY+14,"Scan Inventory",T.text,13,4,true)
@@ -1053,6 +1118,9 @@ local function renderBrowser()
     else
         -- Hide all tool browser elements
         for i=1,30 do hide("br_ti_"..i); hide("br_tt_"..i); hide("br_si_"..i); hide("br_st_"..i); hide("br_si_pin_"..i) end
+        hide("br_tool_sb_bg"); hide("br_tool_sb")
+        hide("br_ts_bg"); hide("br_ts_o"); hide("br_ts_t")
+        S.toolSearchFocused=false  -- unfocus search when leaving tool browser
         for i=1,5 do hide("br_pin_"..i); hide("br_pin_t"..i) end
         hide("br_lbg"); hide("br_lbg_o"); hide("br_lhdr"); hide("br_lhl")
         hide("br_scan"); hide("br_scan_t"); hide("br_pin_hdr")
@@ -1133,7 +1201,7 @@ local function renderBrowser()
 
         for i=1,sVis do
             local sc=displayItems[i+listScroll]
-            if not sc then hide("br_gi_"..i); hide("br_gt_"..i) break end
+            if not sc then hide("br_gi_"..i); hide("br_gt_"..i); hide("br_gpath_"..i) break end
             local iy=slY+(i-1)*22
             local absIdx=i+listScroll
             local sel=S.scriptSel==absIdx
@@ -1142,16 +1210,44 @@ local function renderBrowser()
             local bgCol=bulkSel and T.warn or sel and T.accent or (hov and T.panel or T.surface)
             Box("br_gi_"..i,cx,iy,rw-10,21,bgCol,3)
             local lbl
-            if S.gcBrowseMode then lbl=sc.key.." = "..sc.val
-            else lbl=sc.label or ((sc.icon or "")..sc.name.." ["..sc.class.."]"..(sc.currentVal or "")) end
-            if tw(lbl,12)>rw-18 then lbl=lbl:sub(1,60).."…" end
+            if S.gcBrowseMode then
+                lbl=sc.key.." = "..sc.val
+                if tw(lbl,12)>rw-18 then lbl=lbl:sub(1,60).."…" end
+                hide("br_gpath_"..i)
+            else
+                -- Name + class on left
+                lbl=sc.label or ((sc.icon or "")..sc.name.." ["..sc.class.."]"..(sc.currentVal or ""))
+                -- Full path on far right in small dim text
+                if sc.fullPath and sc.fullPath~="" then
+                    local pathStr=sc.fullPath
+                    local pathW=tw(pathStr,9)
+                    local maxPathW=rw-10-tw(lbl,12)-24
+                    if pathW>maxPathW and maxPathW>40 then
+                        -- Trim from left so right side shows deepest name
+                        while tw("…"..pathStr,9)>maxPathW and #pathStr>4 do
+                            pathStr=pathStr:sub(2)
+                        end
+                        pathStr="…"..pathStr
+                    end
+                    local pathX=cx+rw-12-tw(pathStr,9)
+                    Txt("br_gpath_"..i,pathX,iy+7,pathStr,sel and T.dim or T.border,9,4)
+                    -- Clip label so it doesn't overlap path
+                    local lblMax=pathX-cx-14
+                    if tw(lbl,12)>lblMax then lbl=lbl:sub(1,math.floor(lblMax/6.5)).."…" end
+                else
+                    hide("br_gpath_"..i)
+                    if tw(lbl,12)>rw-18 then lbl=lbl:sub(1,60).."…" end
+                end
+            end
             local txtCol
             if S.gcBrowseMode and sc.vtype then
                 txtCol=(bulkSel or sel) and T.bg or (sc.vtype=="number" and T.hintNum or sc.vtype=="boolean" and T.hintBool or T.sub)
             else txtCol=sel and T.text or T.sub end
             Txt("br_gt_"..i,cx+6,iy+4,lbl,txtCol,12,4)
         end
-        for i=math.min(#displayItems-listScroll,sVis)+1,sVis+2 do hide("br_gi_"..i); hide("br_gt_"..i) end
+        for i=math.min(#displayItems-listScroll,sVis)+1,sVis+2 do
+            hide("br_gi_"..i); hide("br_gt_"..i); hide("br_gpath_"..i)
+        end
 
         -- Scrollbar
         if #displayItems>sVis then
@@ -1540,6 +1636,8 @@ local function renderSettings()
     Box("st_sb_track",sbX,cy+4,sbW,ch-8,T.panel2,3,6)
 
     local lx=cx+14  -- left content x
+    -- Clamp before rendering using last-frame maxScroll so content never escapes panel
+    S.settingsScroll=math.max(0,math.min(S.settingsMaxScroll,S.settingsScroll))
     local ry=cy-S.settingsScroll  -- rolling Y cursor with scroll offset
 
     -- ===== Section: Hotkey =====
@@ -1597,10 +1695,13 @@ local function renderSettings()
     -- interval
     Txt("st_aaint_l",lx+aaBtnW+12,ry+7,"Every",T.sub,11,4)
     local aiX=lx+aaBtnW+58; local aiW=48
-    Box("st_aaint",aiX,ry+2,aiW,22,T.panel2,3)
-    Outline("st_aaint_o",aiX,ry+2,aiW,22,S.autoApplyFocused and T.accent or T.border,4,CR)
+    local aiVal=tonumber(S.autoApplyIntervalInput)
+    local aiLow=aiVal and aiVal>0 and aiVal<1
+    Box("st_aaint",aiX,ry+2,aiW,22,aiLow and T.panel2 or T.panel2,3)
+    Outline("st_aaint_o",aiX,ry+2,aiW,22,
+        S.autoApplyFocused and T.accent or (aiLow and T.warn or T.border),4,CR)
     local aiDisp=S.autoApplyIntervalInput..(S.autoApplyFocused and (math.floor(tick()*2)%2==0 and "|" or "") or "")
-    Txt("st_aaint_t",aiX+4,ry+6,aiDisp,T.text,11,4)
+    Txt("st_aaint_t",aiX+4,ry+6,aiDisp,aiLow and T.warn or T.text,11,4)
     Txt("st_aaint_s",aiX+aiW+6,ry+7,"sec",T.sub,11,4)
 
     ry=ry+aaBtnH+6
@@ -1611,6 +1712,13 @@ local function renderSettings()
         Txt("st_aacnt",lx,ry,"Toggle ON to start. Only applies while Editor tab is active.",T.sub,11,4)
     end
     ry=ry+22
+    -- Warning for low interval values
+    if aiLow then
+        Txt("st_aa_warn",lx,ry,"⚠ Low interval values (<1s) can cause crashes or freezes.",T.warn,10,4)
+    else
+        hide("st_aa_warn")
+    end
+    ry=ry+(aiLow and 14 or 0)
 
     -- divider
     Box("st_div3",cx+8,ry,cw-16,1,T.sep,3); ry=ry+10
@@ -1698,8 +1806,8 @@ local function renderSettings()
     -- scrollbar thumb (estimate total content height = ry - initial cy + 20)
     local totalH=math.max(1,(ry+20)-(cy-S.settingsScroll))
     local visH=ch
-    -- clamp settingsScroll to actual content
     local maxScroll=math.max(0,totalH-visH)
+    S.settingsMaxScroll=maxScroll  -- save for next-frame pre-render clamp and drag
     S.settingsScroll=math.max(0,math.min(maxScroll,S.settingsScroll))
     if totalH>visH then
         local thumbH=math.max(24,math.floor(visH/totalH*visH))
@@ -1757,7 +1865,7 @@ local function handleInput(dt)
         if not held then S.settingsScrollDrag=false end
         if S.settingsScrollDrag then
             local relY=math.max(0,math.min(1,(mouse.Y-(y+HEADER_H+PAD+4))/math.max(1,ch-8)))
-            S.settingsScroll=math.floor(relY*800)  -- renderSettings clamps to actual max
+            S.settingsScroll=math.floor(relY*math.max(1,S.settingsMaxScroll))
         end
 
         -- Mirror renderSettings ry exactly (account for scroll offset)
@@ -1795,7 +1903,7 @@ local function handleInput(dt)
         elseif click then
             if S.autoApplyFocused then
                 local v=tonumber(S.autoApplyIntervalInput)
-                if v and v>0 then S.autoApplyInterval=math.max(0.5,v)
+                if v and v>0 then S.autoApplyInterval=v
                 else S.autoApplyIntervalInput=tostring(S.autoApplyInterval) end
             end
             S.autoApplyFocused=false
@@ -1808,7 +1916,7 @@ local function handleInput(dt)
                     elseif k=="enter" then
                         S.autoApplyFocused=false
                         local v=tonumber(S.autoApplyIntervalInput)
-                        if v and v>0 then S.autoApplyInterval=math.max(0.5,v)
+                        if v and v>0 then S.autoApplyInterval=v
                         else S.autoApplyIntervalInput=tostring(S.autoApplyInterval) end
                     else
                         local c=charMap[k] or k
@@ -1832,7 +1940,7 @@ local function handleInput(dt)
         for i=1,#THEMES do
             local ttx=lx+(i-1)*(thW2+4)
             if click and inB(ttx,themeRy,thW2,22) then
-                S.themeIdx=i; applyTheme(i)
+                S.themeIdx=i; applyTheme(i); saveTheme(i)
             end
         end
 
@@ -1901,7 +2009,40 @@ local function handleInput(dt)
 
         if subTab=="tool" then
             local lw=SIDEBAR_W; local rx=cx+lw+PAD; local rw=cw_full-lw-PAD
-            local toolListY=panelY+26; local scanBtnY=panelY+panelH-32
+            local tsY2=panelY+26; local tsH2=20; local tsW2=lw-16
+            -- Tool search input focus
+            if click and inB(cx+4,tsY2,tsW2,tsH2) then
+                S.toolSearchFocused=true; setrobloxinput(false)
+            elseif click and not inB(cx+4,tsY2,tsW2,tsH2) then
+                S.toolSearchFocused=false
+            end
+            if S.toolSearchFocused then
+                for _,k in ipairs({"a","b","c","d","e","f","g","h","i","j","k","l","m",
+                    "n","o","p","q","r","s","t","u","v","w","x","y","z",
+                    "0","1","2","3","4","5","6","7","8","9","space","minus","backspace"}) do
+                    if keyRepeating(k,dt) then
+                        if k=="backspace" then S.toolSearch=S.toolSearch:sub(1,-2)
+                        else
+                            local ch=charMap[k] or k
+                            if #ch==1 then
+                                if isShift() then ch=ch:upper() end
+                                S.toolSearch=S.toolSearch..ch
+                            end
+                        end
+                        S.toolScroll=0
+                    end
+                end
+            end
+            -- Build filtered tool list
+            local filteredTools={}
+            local tsq=S.toolSearch:lower()
+            for _,t in ipairs(S.tools) do
+                if tsq=="" or t.label:lower():find(tsq,1,true) then
+                    table.insert(filteredTools,t)
+                end
+            end
+
+            local toolListY=panelY+50; local scanBtnY=panelY+panelH-32
             local toolVis=math.floor((scanBtnY-toolListY-4)/22)
             local slY=panelY+28; local loadBtnY=panelY+panelH-32
             local sVis=math.floor((loadBtnY-slY-4)/22)
@@ -1917,7 +2058,7 @@ local function handleInput(dt)
 
             -- Scan
             if click and inB(cx,scanBtnY,lw,28) then
-                S.tools=scanTools(); S.toolSel=1
+                S.tools=scanTools(); S.toolSel=1; S.toolScroll=0
                 if #S.tools==0 then S.browserStatus="No tools in backpack"; S.browserStatusColor=T.warn
                 else
                     local tool=S.tools[1].inst
@@ -1926,12 +2067,30 @@ local function handleInput(dt)
                 end
             end
 
-            -- Tool list
+            local sbW2=8; local sbX2=cx+lw-sbW2-2
+            local maxToolScroll2=math.max(0,#filteredTools-toolVis)
+
+            -- Wheel scroll on tool list
+            if wheelDelta~=0 and inB(cx,toolListY,lw,scanBtnY-toolListY) then
+                S.toolScroll=math.max(0,math.min(maxToolScroll2,S.toolScroll+wheelDelta))
+                wheelDelta=0
+            end
+            -- Scrollbar drag on tool list
+            if #filteredTools>toolVis and (held or click) and inB(sbX2,toolListY,sbW2+4,scanBtnY-toolListY) then
+                local trackH=scanBtnY-toolListY-2
+                local rel=math.max(0,math.min(1,(mouse.Y-toolListY)/math.max(1,trackH)))
+                S.toolScroll=math.floor(rel*math.max(1,maxToolScroll2))
+            end
+
+            -- Tool list clicks (filtered)
             for i=1,toolVis do
-                if S.tools[i] and click and inB(cx+1,toolListY+(i-1)*22,lw-2,21) then
-                    S.toolSel=i; local tool=S.tools[i].inst
+                local absIdx=i+S.toolScroll
+                local ft=filteredTools[absIdx]
+                if ft and click and inB(cx+1,toolListY+(i-1)*22,lw-sbW2-4,21) then
+                    S.toolSel=absIdx; local tool=ft.inst
                     S.navStack={{inst=tool,name=tool.Name}}; S.navItems=buildNavItems(tool); S.navScroll=0; S.navSel=1
-                    S.browserStatus=S.tools[i].label; S.browserStatusColor=T.sub
+                    S.browserStatus=ft.label; S.browserStatusColor=T.sub
+                    S.browserStatus=S.tools[absIdx].label; S.browserStatusColor=T.sub
                 end
             end
 
@@ -1995,14 +2154,17 @@ local function handleInput(dt)
                 end
             end
 
-            -- Load
+            -- Load (re-check type at runtime to handle stale flags)
             local loadW2=selEntry and 38 or 0
             if click and selEntry and inB(rx,loadBtnY,rw-loadW2-(loadW2>0 and 2 or 0),28) then
-                if selEntry.isScript then
+                -- Runtime type check takes priority over stored flag
+                local rtIsVal=selEntry.inst and isValueType(selEntry.inst)
+                local rtIsSc=selEntry.inst and isScriptType(selEntry.inst)
+                if rtIsSc and not rtIsVal then
                     local lines,err=decompileToLines(selEntry.inst)
                     if lines then openInTab(lines,selEntry.inst:GetFullName(),selEntry.inst); S.tab="editor"
                     else S.browserStatus=err; S.browserStatusColor=T.err end
-                elseif selEntry.isValue then
+                elseif rtIsVal then
                     local hint=selEntry.inst.ClassName
                     local tmpl=hint=="BoolValue" and {"-- Set BoolValue: "..selEntry.inst.Name,"-- Type: true or false","false"}
                         or hint=="StringValue" and {"-- Set StringValue: "..selEntry.inst.Name,"",""}
@@ -2019,6 +2181,19 @@ local function handleInput(dt)
                 elseif selEntry.isContainer and selEntry.hasChildren then
                     table.insert(S.navStack,{inst=selEntry.inst,name=selEntry.name})
                     S.navItems=buildNavItems(selEntry.inst); S.navScroll=0; S.navSel=1
+                elseif rtIsVal then
+                    -- fallback: caught by isValueType at runtime even if stored flag was wrong
+                    local hint=selEntry.inst.ClassName
+                    local tmpl={"-- Set "..hint..": "..selEntry.inst.Name,"0"}
+                    local snap={lines=tmpl,originalLines=deepCopy(tmpl),scroll=0,scrollX=0,cursorLine=2,cursorChar=1,
+                        currentPath="[Value] "..selEntry.inst.Name.." ["..hint.."]",currentInst=nil,
+                        editValueInst=selEntry.inst,editValueType=hint,editorStatus="Type value, then Set Value",
+                        editorStatusColor=nil,searchOpen=false,searchQuery="",searchMatches={},searchMatchIdx=1,
+                        undoStack={},redoStack={}}
+                    saveActiveTab()
+                    if #S.lines==0 and S.currentPath=="" then S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap)
+                    elseif #S.tabs<MAX_TABS then table.insert(S.tabs,snap); restoreTabSnapshot(snap); S.activeTab=#S.tabs
+                    else S.tabs[S.activeTab]=snap; restoreTabSnapshot(snap) end; S.tab="editor"
                 end
             end
 
@@ -2055,9 +2230,12 @@ local function handleInput(dt)
                 local fW=math.floor(rw/#filters)-1
                 for fi,fk in ipairs(filters) do
                     if click and inB(cx+(fi-1)*(fW+1),filterY,fW,18) then
+                        local prevFilter=S.explorerFilter
                         S.explorerFilter=fk
+                        -- Always re-run if there's a query or existing results to re-filter
                         if S.scriptSearch~="" then
-                            S.scriptSearchResults=searchAllScripts(S.scriptSearch,fk); S.scriptSel=1; S.scriptSearchScroll=0
+                            S.scriptSearchResults=searchAllScripts(S.scriptSearch,fk)
+                            S.scriptSel=1; S.scriptSearchScroll=0
                         end
                     end
                 end
@@ -2066,7 +2244,10 @@ local function handleInput(dt)
             -- Input focus
             if click and inB(cx,inputY,inputW,inputH) then
                 S.scriptSearchFocused=true; S.pathFocused=false; S.focused=false
-            elseif click then S.scriptSearchFocused=false end
+                setrobloxinput(false)  -- block immediately on focus
+            elseif click then
+                S.scriptSearchFocused=false
+            end
 
             -- Go
             local function doSearch()
@@ -2649,11 +2830,13 @@ RunService.RenderStepped:Connect(function(dt)
     end
 
     -- Block game input whenever any text input is active or UI is focused
+    -- Block Roblox input whenever ANY text field or listener is active
     local anyTyping = S.pathFocused or S.searchFocused or S.scriptSearchFocused
         or S.autoApplyFocused or S.listeningForKey or S.lineJumpFocused or S.gcBulkFocused
-        or S.crossSearchFocused or S.presetNameFocused
+        or S.crossSearchFocused or S.presetNameFocused or S.toolSearchFocused
         or (S.tab=="editor" and S.focused)
-    setrobloxinput(not anyTyping)  -- block game input ONLY when a textbox is active
+        or (S.tab=="browser" and S.browserSubTab=="game" and S.scriptSearchFocused)
+    setrobloxinput(not anyTyping)
 
     renderWindow()
 
